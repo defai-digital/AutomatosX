@@ -7,7 +7,7 @@ import type {
   RuntimePrCreateResponse,
   RuntimePrReviewResponse,
   SharedRuntimeService,
-} from './index.js';
+} from './runtime-service-types.js';
 
 const execFileAsync = promisify(execFile);
 

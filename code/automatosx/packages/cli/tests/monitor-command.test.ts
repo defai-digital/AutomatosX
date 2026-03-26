@@ -41,6 +41,9 @@ function createMonitorState(): MonitorApiState {
         deniedCount: 0,
       },
     },
+    deniedInstalledBridges: {
+      deniedCount: 0,
+    },
     sessions: [{
       sessionId: 'session-1',
       task: 'release task',
@@ -687,6 +690,31 @@ describe('monitor command helpers', () => {
     expect(html).toContain('community-review');
     expect(html).toContain('.automatosx/skills/community-review/skill.json');
     expect(html).toContain('fixtures/community-review/SKILL.md');
+  });
+
+  it('renders denied installed bridge aggregates in the overview tab', () => {
+    const state = createMonitorState();
+    state.deniedInstalledBridges = {
+      deniedCount: 1,
+      latest: {
+        bridgeId: 'guarded-installed-bridge',
+        relativePath: '.automatosx/bridges/guarded-installed-bridge/bridge.json',
+        installedAt: '2026-03-24T12:00:00.000Z',
+        summary: 'Installed bridge "guarded-installed-bridge" is currently denied (denied). Execution blocked because "guarded-installed-bridge" requires explicit trust.',
+        trustState: 'denied',
+        sourceRef: 'https://github.com/example/guarded-installed-bridge',
+      },
+    };
+
+    const context = executeDashboardScript(buildDashboardHtml(state));
+    context.switchTab('overview');
+
+    const html = context.document.getElementById('app').innerHTML;
+    expect(html).toContain('Runtime Governance');
+    expect(html).toContain('Installed bridges currently denied by workspace trust policy');
+    expect(html).toContain('guarded-installed-bridge');
+    expect(html).toContain('.automatosx/bridges/guarded-installed-bridge/bridge.json');
+    expect(html).toContain('https://github.com/example/guarded-installed-bridge');
   });
 
   it('parses monitor flags and rejects invalid ports', () => {

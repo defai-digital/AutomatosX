@@ -26,7 +26,7 @@ import type {
   RuntimeTraceTreeNode,
   RuntimeWorkflowDescription,
   SharedRuntimeService,
-} from './index.js';
+} from './runtime-service-types.js';
 
 interface ProviderBridgeLike {
   getExecutionMode(): ProviderExecutionMode;

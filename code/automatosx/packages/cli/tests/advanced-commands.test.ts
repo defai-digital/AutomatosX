@@ -24,6 +24,7 @@ import {
   SHARED_RUNTIME_MOCK_PROVIDER,
   createCliTestTempDir,
 } from './support/test-paths.js';
+import { writeDeniedInstalledBridge } from './support/bridge-fixtures.js';
 
 function createTempDir(): string {
   return createCliTestTempDir('advanced-commands');
@@ -793,6 +794,31 @@ describe('advanced retained commands', () => {
             skillId: 'guarded-import-skill',
             trustState: 'denied',
           },
+        },
+      },
+    });
+  });
+
+  it('surfaces denied installed bridges in status views', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    await setupCommand([], defaultOptions({ outputDir: tempDir }));
+    await writeDeniedInstalledBridge(tempDir, {
+      bridgeId: 'guarded-installed-bridge',
+    });
+
+    const statusResult = await statusCommand([], defaultOptions({ outputDir: tempDir, limit: 5 }));
+    expect(statusResult.success).toBe(true);
+    expect(statusResult.message).toContain('Denied installed bridges:');
+    expect(statusResult.message).toContain('guarded-installed-bridge denied');
+    expect(statusResult.message).toContain('requires explicit trust');
+    expect(statusResult.data).toMatchObject({
+      deniedInstalledBridges: {
+        deniedCount: 1,
+        latest: {
+          bridgeId: 'guarded-installed-bridge',
+          trustState: 'denied',
         },
       },
     });

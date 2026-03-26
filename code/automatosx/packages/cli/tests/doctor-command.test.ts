@@ -22,6 +22,9 @@ describe('doctor command data builder', () => {
           deniedCount: 0,
         },
       }),
+      deniedInstalledBridges: {
+        deniedCount: 0,
+      },
     });
 
     expect(data.governance).toMatchObject({
@@ -32,6 +35,9 @@ describe('doctor command data builder', () => {
       deniedImportedSkills: {
         deniedCount: 0,
       },
+    });
+    expect(data.deniedInstalledBridges).toMatchObject({
+      deniedCount: 0,
     });
     expect('governance' in data).toBe(true);
   });

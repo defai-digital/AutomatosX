@@ -1,9 +1,9 @@
 import type { CLIOptions, CommandResult } from '../types.js';
 import { createRuntime, failure, resolveCliBasePath, success, usageError } from '../utils/formatters.js';
 import {
-  buildDeniedImportedSkillAggregate,
-  buildRuntimeGovernanceAggregate,
+  buildCliGovernanceSnapshot,
   formatDeniedImportedSkillSummaryLines,
+  formatDeniedInstalledBridgeSummaryLines,
   formatRuntimeGuardSummaryLine,
 } from '../utils/runtime-guard-summary.js';
 
@@ -17,10 +17,7 @@ export async function statusCommand(args: string[], options: CLIOptions): Promis
   const basePath = resolveCliBasePath(options);
   const runtime = createRuntime(options);
   const status = await runtime.getStatus({ limit: options.limit });
-  const deniedImportedSkills = await buildDeniedImportedSkillAggregate(basePath);
-  const governance = buildRuntimeGovernanceAggregate(status.recentFailedTraces, {
-    deniedImportedSkills,
-  });
+  const { governance, deniedInstalledBridges } = await buildCliGovernanceSnapshot(basePath, status.recentFailedTraces);
   const recentFailedTraces = status.recentFailedTraces.length > 0
     ? status.recentFailedTraces.flatMap((trace) => {
       const lines = [`- ${trace.traceId} ${trace.workflowId} ${trace.error?.message ?? 'Unknown error'}`];
@@ -32,6 +29,7 @@ export async function statusCommand(args: string[], options: CLIOptions): Promis
     })
     : ['- none'];
   const deniedImportedSkillLines = formatDeniedImportedSkillSummaryLines(governance.deniedImportedSkills);
+  const deniedInstalledBridgeLines = formatDeniedInstalledBridgeSummaryLines(deniedInstalledBridges);
 
   return success([
     'AutomatosX Status',
@@ -57,8 +55,12 @@ export async function statusCommand(args: string[], options: CLIOptions): Promis
     '',
     'Denied imported skills:',
     ...deniedImportedSkillLines,
+    '',
+    'Denied installed bridges:',
+    ...deniedInstalledBridgeLines,
   ].join('\n'), {
     ...status,
     governance,
+    deniedInstalledBridges,
   });
 }

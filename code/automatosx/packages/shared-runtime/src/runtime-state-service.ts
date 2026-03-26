@@ -21,7 +21,7 @@ import type {
   RuntimeGuardCheckResponse,
   RuntimeGuardPolicySummary,
   SharedRuntimeService,
-} from './index.js';
+} from './runtime-service-types.js';
 
 export interface RuntimeStateServiceConfig {
   stateStore: StateStore;

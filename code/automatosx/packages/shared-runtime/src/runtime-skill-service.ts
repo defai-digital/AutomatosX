@@ -17,7 +17,7 @@ import type {
   RuntimeSkillRunRequest,
   RuntimeSkillRunResponse,
   SharedRuntimeService,
-} from './index.js';
+} from './runtime-service-types.js';
 
 export interface RuntimeSkillServiceConfig {
   basePath: string;

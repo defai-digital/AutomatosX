@@ -105,8 +105,17 @@ export const MONITOR_DASHBOARD_SCRIPT_OVERVIEW = `
       const latestDeniedImportedSkill = deniedImportedSkills && deniedImportedSkills.latest && typeof deniedImportedSkills.latest === 'object'
         ? deniedImportedSkills.latest
         : null;
+      const deniedInstalledBridges = state && state.deniedInstalledBridges && typeof state.deniedInstalledBridges === 'object'
+        ? state.deniedInstalledBridges
+        : null;
+      const deniedInstalledBridgeCount = deniedInstalledBridges && typeof deniedInstalledBridges.deniedCount === 'number'
+        ? deniedInstalledBridges.deniedCount
+        : 0;
+      const latestDeniedInstalledBridge = deniedInstalledBridges && deniedInstalledBridges.latest && typeof deniedInstalledBridges.latest === 'object'
+        ? deniedInstalledBridges.latest
+        : null;
 
-      if (blockedCount === 0 && deniedImportedSkillCount === 0) {
+      if (blockedCount === 0 && deniedImportedSkillCount === 0 && deniedInstalledBridgeCount === 0) {
         return '';
       }
 
@@ -139,12 +148,36 @@ export const MONITOR_DASHBOARD_SCRIPT_OVERVIEW = `
           + '</div></div>';
       }
 
-      const totalCount = blockedCount + deniedImportedSkillCount;
-      const subcopy = blockedCount > 0 && deniedImportedSkillCount > 0
-        ? 'Recent traces blocked by runtime-governance and imported skills currently denied by workspace trust policy.'
-        : deniedImportedSkillCount > 0
-          ? 'Imported skills currently denied by workspace trust policy.'
-          : 'Recent traces blocked by runtime-governance. Open the failed run for step-level context and remediation details.';
+      if (deniedInstalledBridgeCount > 0 && latestDeniedInstalledBridge !== null && typeof latestDeniedInstalledBridge.summary === 'string' && latestDeniedInstalledBridge.summary.length > 0) {
+        bodyHtml += (bodyHtml.length > 0 ? '<div class="section-divider"></div>' : '')
+          + renderEscapedDetailBlock(latestDeniedInstalledBridge.summary)
+          + '<div class="columns"><div>'
+          + kvRow('Latest denied bridge', latestDeniedInstalledBridge.bridgeId || 'n/a')
+          + kvRow('Path', latestDeniedInstalledBridge.relativePath || 'n/a')
+          + '</div><div>'
+          + kvRow('Trust state', latestDeniedInstalledBridge.trustState || 'n/a')
+          + kvRow('Source', latestDeniedInstalledBridge.sourceRef || 'n/a')
+          + '</div></div>';
+      }
+
+      const totalCount = blockedCount + deniedImportedSkillCount + deniedInstalledBridgeCount;
+      const hasTraceBlocks = blockedCount > 0;
+      const hasDeniedSkills = deniedImportedSkillCount > 0;
+      const hasDeniedBridges = deniedInstalledBridgeCount > 0;
+      let subcopy = 'Recent traces blocked by runtime-governance. Open the failed run for step-level context and remediation details.';
+      if (hasTraceBlocks && hasDeniedSkills && hasDeniedBridges) {
+        subcopy = 'Recent traces blocked by runtime-governance, imported skills denied by workspace trust policy, and installed bridges that currently cannot execute.';
+      } else if (hasTraceBlocks && hasDeniedSkills) {
+        subcopy = 'Recent traces blocked by runtime-governance and imported skills currently denied by workspace trust policy.';
+      } else if (hasTraceBlocks && hasDeniedBridges) {
+        subcopy = 'Recent traces blocked by runtime-governance and installed bridges that currently cannot execute.';
+      } else if (hasDeniedSkills && hasDeniedBridges) {
+        subcopy = 'Imported skills and installed bridges currently denied by workspace trust policy.';
+      } else if (hasDeniedSkills) {
+        subcopy = 'Imported skills currently denied by workspace trust policy.';
+      } else if (hasDeniedBridges) {
+        subcopy = 'Installed bridges currently denied by workspace trust policy.';
+      }
 
       return renderSection('Runtime Governance', bodyHtml, {
         count: totalCount,

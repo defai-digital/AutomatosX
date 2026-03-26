@@ -11,6 +11,7 @@ import {
   skillCommand,
 } from '../src/commands/index.js';
 import type { CLIOptions } from '../src/types.js';
+import { writeDeniedInstalledBridge } from './support/bridge-fixtures.js';
 import { createCliTestTempDir } from './support/test-paths.js';
 
 function createTempDir(): string {
@@ -151,6 +152,28 @@ describe('governance command', () => {
       blockedCount: 1,
       deniedImportedSkills: {
         deniedCount: 1,
+      },
+    });
+  });
+
+  it('includes denied installed bridges in the governance text summary without changing the canonical aggregate', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    await writeDeniedInstalledBridge(tempDir, {
+      bridgeId: 'guarded-installed-bridge',
+    });
+
+    const result = await governanceCommand([], defaultOptions({ outputDir: tempDir }));
+
+    expect(result.success).toBe(true);
+    expect(result.message).toContain('Denied installed bridges:');
+    expect(result.message).toContain('guarded-installed-bridge denied');
+    expect(result.message).toContain('requires explicit trust');
+    expect(RuntimeGovernanceAggregateSchema.parse(result.data)).toMatchObject({
+      blockedCount: 0,
+      deniedImportedSkills: {
+        deniedCount: 0,
       },
     });
   });

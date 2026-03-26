@@ -23,7 +23,7 @@ import type {
   RuntimeRecursiveDiscussionRequest,
   RuntimeRecursiveDiscussionResponse,
   SharedRuntimeService,
-} from './index.js';
+} from './runtime-service-types.js';
 import { buildSessionTask, ensureSessionRecord } from './runtime-session-support.js';
 
 interface ProviderBridgeLike {

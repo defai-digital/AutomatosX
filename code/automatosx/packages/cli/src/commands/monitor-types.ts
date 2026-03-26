@@ -1,5 +1,8 @@
 import { createRuntime } from '../utils/formatters.js';
-import type { RuntimeGovernanceAggregate } from '../utils/runtime-guard-summary.js';
+import type {
+  DeniedInstalledBridgeAggregate,
+  RuntimeGovernanceAggregate,
+} from '../utils/runtime-guard-summary.js';
 
 export interface MonitorConfig {
   portMin: number;
@@ -21,6 +24,7 @@ type RuntimeWorkflowSummary = Awaited<ReturnType<RuntimeService['listWorkflows']
 export interface MonitorApiState {
   status: Awaited<ReturnType<RuntimeService['getStatus']>>;
   governance: RuntimeGovernanceAggregate;
+  deniedInstalledBridges: DeniedInstalledBridgeAggregate;
   providers: MonitorProviderSnapshot;
   sessions: Awaited<ReturnType<RuntimeService['listSessions']>>;
   agents: Awaited<ReturnType<RuntimeService['listAgents']>>;

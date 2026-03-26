@@ -2,6 +2,7 @@ import { rm } from 'node:fs/promises';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
 import { buildMonitorState } from '../src/commands/monitor-state.js';
+import { writeDeniedInstalledBridge } from './support/bridge-fixtures.js';
 import { createCliTestTempDir } from './support/test-paths.js';
 
 function createTempDir(): string {
@@ -68,6 +69,43 @@ describe('monitor state governance aggregate', () => {
       blockedCount: 1,
       latest: {
         traceId: 'monitor-failed-001',
+      },
+    });
+  });
+
+  it('surfaces denied installed bridges alongside the canonical governance aggregate', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    await writeDeniedInstalledBridge(tempDir, {
+      bridgeId: 'guarded-installed-bridge',
+    });
+
+    const runtime = createSharedRuntimeService({ basePath: tempDir });
+    const state = await buildMonitorState(
+      runtime,
+      async () => ({
+        source: 'unavailable',
+        detectedProviders: [],
+        enabledProviders: [],
+        installedButDisabledProviders: [],
+      }),
+      tempDir,
+      undefined,
+      5,
+    );
+
+    expect(state.governance).toMatchObject({
+      blockedCount: 0,
+      deniedImportedSkills: {
+        deniedCount: 0,
+      },
+    });
+    expect(state.deniedInstalledBridges).toMatchObject({
+      deniedCount: 1,
+      latest: {
+        bridgeId: 'guarded-installed-bridge',
+        trustState: 'denied',
       },
     });
   });

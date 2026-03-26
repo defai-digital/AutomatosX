@@ -7,8 +7,11 @@ import { listDefaultAgentCatalog } from '../agent-catalog.js';
 import { createRuntime, failure, resolveCliBasePath, success, usageError } from '../utils/formatters.js';
 import { PROVIDER_CLIENT_IDS, PROVIDER_CLIENT_COMMANDS, type ProviderClientId } from '../utils/provider-detection.js';
 import {
-  buildDeniedImportedSkillAggregate,
-  buildRuntimeGovernanceAggregate,
+  buildCliGovernanceSnapshot,
+  createEmptyCliGovernanceSnapshot,
+  formatCliGovernanceWarningSummary,
+  hasCliGovernanceWarnings,
+  type DeniedInstalledBridgeAggregate,
   type RuntimeGovernanceAggregate,
 } from '../utils/runtime-guard-summary.js';
 import { parseJsonObjectString } from '../utils/validation.js';
@@ -38,6 +41,7 @@ export interface DoctorCommandData {
   checks: DoctorCheck[];
   summary: DoctorSummary;
   governance: RuntimeGovernanceAggregate;
+  deniedInstalledBridges: DeniedInstalledBridgeAggregate;
 }
 
 export function buildDoctorCommandData(input: {
@@ -46,6 +50,7 @@ export function buildDoctorCommandData(input: {
   checks: Array<{ id: string; status: 'ok' | 'warn' | 'fail'; message: string }>;
   summary: { ok: number; warn: number; fail: number };
   governance: RuntimeGovernanceAggregate;
+  deniedInstalledBridges: DeniedInstalledBridgeAggregate;
 }): DoctorCommandData {
   return {
     basePath: input.basePath,
@@ -53,6 +58,7 @@ export function buildDoctorCommandData(input: {
     checks: input.checks,
     summary: input.summary,
     governance: input.governance,
+    deniedInstalledBridges: input.deniedInstalledBridges,
   };
 }
 
@@ -254,13 +260,6 @@ function summarizeChecks(checks: DoctorCheck[]): DoctorSummary {
   return checks.reduce<DoctorSummary>((s, c) => { s[c.status] += 1; return s; }, { ok: 0, warn: 0, fail: 0 });
 }
 
-function truncateSummary(value: string, maxLength = 140): string {
-  if (value.length <= maxLength) {
-    return value;
-  }
-  return `${value.slice(0, Math.max(0, maxLength - 1))}\u2026`;
-}
-
 // ============================================================================
 // Command
 // ============================================================================
@@ -286,7 +285,9 @@ export async function doctorCommand(args: string[], options: CLIOptions): Promis
   const claudeMcpPath = join(basePath, '.mcp.json');
   const agentsMdPath = join(basePath, 'AGENTS.md');
   const providerSummaryPath = join(automatosxDir, 'providers.json');
-  let governance = buildRuntimeGovernanceAggregate([]);
+  const emptyGovernanceSnapshot = createEmptyCliGovernanceSnapshot();
+  let governance = emptyGovernanceSnapshot.governance;
+  let deniedInstalledBridges: DeniedInstalledBridgeAggregate = emptyGovernanceSnapshot.deniedInstalledBridges;
 
   // ── Base path ──────────────────────────────────────────────────────────────
   const basePathReady = await canAccess(basePath);
@@ -415,13 +416,12 @@ export async function doctorCommand(args: string[], options: CLIOptions): Promis
 
   // ── Shared runtime ─────────────────────────────────────────────────────────
   try {
-    const [agents, policies, traces, workflows, runtimeStatus, deniedImportedSkills] = await Promise.all([
+    const [agents, policies, traces, workflows, runtimeStatus] = await Promise.all([
       runtime.listAgents(),
       runtime.listPolicies(),
       runtime.listTraces(options.limit ?? 5),
       runtime.listWorkflows({ workflowDir, basePath }),
       runtime.getStatus({ limit: options.limit ?? 5 }),
-      buildDeniedImportedSkillAggregate(basePath),
     ]);
 
     checks.push({ id: 'shared-runtime', status: 'ok', message: 'Shared runtime service is reachable.' });
@@ -444,15 +444,16 @@ export async function doctorCommand(args: string[], options: CLIOptions): Promis
         ? `Trace store is readable (${traces.length} recent trace${traces.length === 1 ? '' : 's'} found).`
         : 'Trace store is readable but has no traces yet.',
     });
-    governance = buildRuntimeGovernanceAggregate(runtimeStatus.recentFailedTraces, {
-      deniedImportedSkills,
-    });
+    const governanceSnapshot = await buildCliGovernanceSnapshot(basePath, runtimeStatus.recentFailedTraces);
+    governance = governanceSnapshot.governance;
+    deniedInstalledBridges = governanceSnapshot.deniedInstalledBridges;
+    const hasGovernanceWarnings = hasCliGovernanceWarnings(governanceSnapshot);
     checks.push({
       id: 'runtime-governance',
-      status: governance.blockedCount > 0 || governance.deniedImportedSkills.deniedCount > 0 ? 'warn' : 'ok',
-      message: governance.blockedCount > 0 || governance.deniedImportedSkills.deniedCount > 0
-        ? formatDoctorGovernanceMessage(governance)
-        : 'No recent runtime-governance blocks detected in failed traces or imported skills.',
+      status: hasGovernanceWarnings ? 'warn' : 'ok',
+      message: hasGovernanceWarnings
+        ? (formatCliGovernanceWarningSummary(governanceSnapshot) ?? 'Runtime governance warnings detected.')
+        : 'No recent runtime-governance blocks detected in failed traces, imported skills, or installed bridges.',
     });
     checks.push({
       id: 'workflows',
@@ -497,26 +498,8 @@ export async function doctorCommand(args: string[], options: CLIOptions): Promis
     checks,
     summary,
     governance,
+    deniedInstalledBridges,
   });
 
   return summary.fail > 0 ? failure(report, data) : success(report, data);
-}
-
-function formatDoctorGovernanceMessage(governance: RuntimeGovernanceAggregate): string {
-  const parts: string[] = [];
-
-  if (governance.blockedCount > 0) {
-    parts.push(
-      `Recent runtime-governance blocks detected (${governance.blockedCount} trace${governance.blockedCount === 1 ? '' : 's'}). Latest: ${governance.latest?.traceId}: ${truncateSummary(governance.latest?.summary ?? 'Unknown runtime governance block.')}`,
-    );
-  }
-
-  const deniedImportedSkills = governance.deniedImportedSkills;
-  if (deniedImportedSkills.deniedCount > 0) {
-    parts.push(
-      `Denied imported skills detected (${deniedImportedSkills.deniedCount} skill${deniedImportedSkills.deniedCount === 1 ? '' : 's'}). Latest: ${deniedImportedSkills.latest?.skillId}: ${truncateSummary(deniedImportedSkills.latest?.summary ?? 'Unknown denied imported skill.')}`,
-    );
-  }
-
-  return parts.join(' ');
 }

@@ -27,6 +27,7 @@ import {
   WORKSPACE_ROOT,
   createCliTestTempDir,
 } from './support/test-paths.js';
+import { writeDeniedInstalledBridge } from './support/bridge-fixtures.js';
 
 function createTempDir(): string {
   return createCliTestTempDir('retained-commands');
@@ -457,6 +458,45 @@ describe('retained high-value commands', () => {
       blockedCount: 0,
       deniedImportedSkills: {
         deniedCount: 1,
+      },
+    });
+  });
+
+  it('surfaces denied installed bridges through doctor', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+    process.env.AUTOMATOSX_INIT_AVAILABLE_CLIENTS = 'claude,cursor,gemini,codex,grok';
+
+    await setupCommand([], defaultOptions({ outputDir: tempDir }));
+    await writeDeniedInstalledBridge(tempDir, {
+      bridgeId: 'guarded-installed-bridge',
+    });
+
+    const result = await doctorCommand([], defaultOptions({
+      outputDir: tempDir,
+      workflowDir: CLI_WORKFLOW_DIR,
+    }));
+
+    expect(result.success).toBe(true);
+    expect(result.message).toContain('Denied installed bridges detected');
+    expect(result.message).toContain('guarded-installed-bridge');
+    expect(result.message).toContain('Execution blocked because');
+    expect(result.data).toMatchObject({
+      governance: {
+        blockedCount: 0,
+      },
+      deniedInstalledBridges: {
+        deniedCount: 1,
+        latest: {
+          bridgeId: 'guarded-installed-bridge',
+          trustState: 'denied',
+        },
+      },
+    });
+    expect(RuntimeGovernanceAggregateSchema.parse((result.data as { governance: unknown }).governance)).toMatchObject({
+      blockedCount: 0,
+      deniedImportedSkills: {
+        deniedCount: 0,
       },
     });
   });

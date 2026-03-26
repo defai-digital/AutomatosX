@@ -1,6 +1,4 @@
 export {
-  STABLE_CATALOG_AGENT_SOURCE,
-  enrichAgentEntry,
   getDefaultAgentCatalogEntry,
   getStableAgentEntry,
   isStableCatalogAgentEntry,

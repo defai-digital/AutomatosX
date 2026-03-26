@@ -3,8 +3,7 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import { listStableAgentEntries } from '../agent-catalog.js';
 import {
-  buildDeniedImportedSkillAggregate,
-  buildRuntimeGovernanceAggregate,
+  buildCliGovernanceSnapshot,
 } from '../utils/runtime-guard-summary.js';
 import { parseJsonObjectString } from '../utils/validation.js';
 import { loadMonitorWorkflows } from './monitor-workflows.js';
@@ -138,19 +137,20 @@ export async function buildMonitorState(
   workflowDir: string | undefined,
   limit: number,
 ): Promise<MonitorApiState> {
-  const [status, sessions, traces, agents, workflows, providers, deniedImportedSkills] = await Promise.all([
+  const [status, sessions, traces, agents, workflows, providers] = await Promise.all([
     runtime.getStatus({ limit }),
     runtime.listSessions(),
     runtime.listTraces(limit),
     runtime.listAgents(),
     loadMonitorWorkflows(runtime, basePath, workflowDir),
     loadProviderSnapshot(),
-    buildDeniedImportedSkillAggregate(basePath),
   ]);
+  const { governance, deniedInstalledBridges } = await buildCliGovernanceSnapshot(basePath, status.recentFailedTraces);
 
   return {
     status,
-    governance: buildRuntimeGovernanceAggregate(status.recentFailedTraces, { deniedImportedSkills }),
+    governance,
+    deniedInstalledBridges,
     sessions,
     traces,
     agents: listStableAgentEntries(agents),

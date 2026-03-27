@@ -1,6 +1,6 @@
 import {
   listWorkflowCatalog as listSharedWorkflowCatalog,
-} from '@defai.digital/shared-runtime';
+} from '@defai.digital/shared-runtime/catalog';
 
 export interface CommandMetadata {
   command: string;

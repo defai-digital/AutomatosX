@@ -3,10 +3,8 @@ import { mkdir, readFile, rm, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MCP_BASE_PATH_ENV_VAR } from '@defai.digital/mcp-server';
-import {
-  RuntimeGovernanceAggregateSchema,
-  createSharedRuntimeService,
-} from '@defai.digital/shared-runtime';
+import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
+import { RuntimeGovernanceAggregateSchema } from '@defai.digital/shared-runtime/governance';
 import {
   DEFAULT_ENTRY_PATH_COMMANDS,
   README_WORKFLOW_COMMANDS,

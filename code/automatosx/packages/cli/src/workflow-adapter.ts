@@ -6,7 +6,7 @@ import {
   getWorkflowCatalogEntry as getSharedWorkflowCatalogEntry,
   listWorkflowCatalog as listSharedWorkflowCatalog,
   type StableWorkflowCatalogEntry,
-} from '@defai.digital/shared-runtime';
+} from '@defai.digital/shared-runtime/catalog';
 import { z } from 'zod';
 import { runCommand } from './commands/run.js';
 import type { CLIOptions, CommandResult } from './types.js';

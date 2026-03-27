@@ -1,7 +1,7 @@
 import {
   createRuntimeBridgeService,
   type BridgeExecutionResult,
-} from '@defai.digital/shared-runtime';
+} from '@defai.digital/shared-runtime/bridge';
 import type { BridgeLoadSuccess } from './bridge-registry.js';
 
 export type { BridgeExecutionResult };

@@ -4,10 +4,8 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import {
-  RuntimeGovernanceAggregateSchema,
-  createSharedRuntimeService,
-} from '@defai.digital/shared-runtime';
+import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
+import { RuntimeGovernanceAggregateSchema } from '@defai.digital/shared-runtime/governance';
 import {
   CLI_COMMAND_NAMES,
   CLI_VERSION,

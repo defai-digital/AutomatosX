@@ -32,15 +32,51 @@ export default defineConfig({
     ],
   },
   resolve: {
-    alias: {
-      'node:sqlite': resolve(__dirname, 'tests/support/node-sqlite-shim.ts'),
-      '@defai.digital/contracts': resolve(__dirname, 'packages/contracts/src/index.ts'),
-      '@defai.digital/mcp-server': resolve(__dirname, 'packages/mcp-server/src/index.ts'),
-      '@defai.digital/monitoring': resolve(__dirname, 'packages/monitoring/src/index.ts'),
-      '@defai.digital/shared-runtime': resolve(__dirname, 'packages/shared-runtime/src/index.ts'),
-      '@defai.digital/state-store': resolve(__dirname, 'packages/state-store/src/index.ts'),
-      '@defai.digital/trace-store': resolve(__dirname, 'packages/trace-store/src/index.ts'),
-      '@defai.digital/workflow-engine': resolve(__dirname, 'packages/workflow-engine/src/index.ts'),
-    },
+    alias: [
+      {
+        find: '@defai.digital/shared-runtime/bridge',
+        replacement: resolve(__dirname, 'packages/shared-runtime/src/runtime-public-bridge-exports.ts'),
+      },
+      {
+        find: '@defai.digital/shared-runtime/governance',
+        replacement: resolve(__dirname, 'packages/shared-runtime/src/runtime-public-governance-exports.ts'),
+      },
+      {
+        find: '@defai.digital/shared-runtime/catalog',
+        replacement: resolve(__dirname, 'packages/shared-runtime/src/runtime-public-catalog-exports.ts'),
+      },
+      {
+        find: '@defai.digital/shared-runtime',
+        replacement: resolve(__dirname, 'packages/shared-runtime/src/index.ts'),
+      },
+      {
+        find: '@defai.digital/contracts',
+        replacement: resolve(__dirname, 'packages/contracts/src/index.ts'),
+      },
+      {
+        find: '@defai.digital/mcp-server',
+        replacement: resolve(__dirname, 'packages/mcp-server/src/index.ts'),
+      },
+      {
+        find: '@defai.digital/monitoring',
+        replacement: resolve(__dirname, 'packages/monitoring/src/index.ts'),
+      },
+      {
+        find: '@defai.digital/state-store',
+        replacement: resolve(__dirname, 'packages/state-store/src/index.ts'),
+      },
+      {
+        find: '@defai.digital/trace-store',
+        replacement: resolve(__dirname, 'packages/trace-store/src/index.ts'),
+      },
+      {
+        find: '@defai.digital/workflow-engine',
+        replacement: resolve(__dirname, 'packages/workflow-engine/src/index.ts'),
+      },
+      {
+        find: 'node:sqlite',
+        replacement: resolve(__dirname, 'tests/support/node-sqlite-shim.ts'),
+      },
+    ],
   },
 });

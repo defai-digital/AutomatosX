@@ -8,7 +8,7 @@ import {
   type SkillLoadResult,
   type SkillLoadSuccess,
   type SkillSpec,
-} from '@defai.digital/shared-runtime';
+} from '@defai.digital/shared-runtime/bridge';
 
 export type {
   ExportedSkillResult,

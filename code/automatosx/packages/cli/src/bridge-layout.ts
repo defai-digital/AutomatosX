@@ -7,4 +7,4 @@ export {
   SKILL_MARKDOWN_FILE,
   resolveBridgeRoot,
   resolveSkillRoot,
-} from '@defai.digital/shared-runtime';
+} from '@defai.digital/shared-runtime/bridge';

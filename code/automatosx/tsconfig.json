@@ -23,6 +23,15 @@
       "@defai.digital/shared-runtime": [
         "./packages/shared-runtime/src/index.ts"
       ],
+      "@defai.digital/shared-runtime/bridge": [
+        "./packages/shared-runtime/src/runtime-public-bridge-exports.ts"
+      ],
+      "@defai.digital/shared-runtime/governance": [
+        "./packages/shared-runtime/src/runtime-public-governance-exports.ts"
+      ],
+      "@defai.digital/shared-runtime/catalog": [
+        "./packages/shared-runtime/src/runtime-public-catalog-exports.ts"
+      ],
       "@defai.digital/state-store": [
         "./packages/state-store/src/index.ts"
       ],

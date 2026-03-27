@@ -1,10 +1,8 @@
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  RuntimeGovernanceAggregateSchema,
-  createSharedRuntimeService,
-} from '@defai.digital/shared-runtime';
+import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
+import { RuntimeGovernanceAggregateSchema } from '@defai.digital/shared-runtime/governance';
 import { executeCli } from '../src/index.js';
 import {
   governanceCommand,

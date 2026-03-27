@@ -5,11 +5,9 @@ import { dirname, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  RuntimeGovernanceAggregateSchema,
-  createRuntimeBridgeService,
-  createSharedRuntimeService,
-} from '@defai.digital/shared-runtime';
+import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
+import { createRuntimeBridgeService } from '@defai.digital/shared-runtime/bridge';
+import { RuntimeGovernanceAggregateSchema } from '@defai.digital/shared-runtime/governance';
 import { initCommand, setupCommand } from '../../cli/src/commands/index.js';
 import type { CLIOptions } from '../../cli/src/types.js';
 import { createMcpServerSurface, MCP_BASE_PATH_ENV_VAR } from '../src/index.js';

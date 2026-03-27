@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RuntimeGovernanceAggregateSchema } from '@defai.digital/shared-runtime';
+import { RuntimeGovernanceAggregateSchema } from '@defai.digital/shared-runtime/governance';
 import { buildDoctorCommandData } from '../src/commands/doctor.js';
 
 describe('doctor command data builder', () => {

@@ -1,4 +1,4 @@
-import { formatWorkflowInputSummary } from '@defai.digital/shared-runtime';
+import { formatWorkflowInputSummary } from '@defai.digital/shared-runtime/catalog';
 import type { CLIOptions, CommandResult } from '../types.js';
 import { WORKFLOW_COMMAND_NAMES } from '../command-metadata.js';
 import { createRuntime, failure, resolveCliBasePath, success, usageError } from '../utils/formatters.js';

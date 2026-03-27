@@ -5,7 +5,7 @@ import {
   type BridgeLoadSuccess,
   type InstallBridgeDefinitionOptions,
   type InstalledBridgeResult,
-} from '@defai.digital/shared-runtime';
+} from '@defai.digital/shared-runtime/bridge';
 
 export type {
   BridgeLoadFailure,

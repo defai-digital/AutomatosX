@@ -1,4 +1,4 @@
-import type { ReviewFocus } from '@defai.digital/shared-runtime';
+import type { ReviewFocus } from '@defai.digital/shared-runtime/catalog';
 import { z } from 'zod';
 
 export interface McpParallelTaskInput {

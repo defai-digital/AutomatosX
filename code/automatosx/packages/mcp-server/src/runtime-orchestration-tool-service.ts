@@ -4,6 +4,8 @@ import {
   listStableAgentCapabilities,
   listStableAgentEntries,
   recommendStableAgents,
+} from '@defai.digital/shared-runtime/catalog';
+import {
   type SharedRuntimeService,
 } from '@defai.digital/shared-runtime';
 import type { MpcToolResult } from './surface-types.js';

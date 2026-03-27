@@ -1,17 +1,19 @@
 import {
+  createRuntimeBridgeService,
+  type BridgeLoadSuccess,
+} from '@defai.digital/shared-runtime/bridge';
+import {
   buildDeniedImportedSkillAggregate as buildDeniedImportedSkillAggregateShared,
   buildRuntimeGovernanceAggregate as buildRuntimeGovernanceAggregateShared,
-  createRuntimeBridgeService,
   evaluateBridgeExecutionTrust,
   extractRuntimeTraceGuardSummary,
-  type BridgeLoadSuccess,
   type DeniedImportedSkillAggregate,
   type DeniedImportedSkillAggregateEntry,
   type RuntimeGovernanceAggregate,
   type RuntimeGovernanceAggregateEntry,
   type RuntimeGovernanceTraceLike,
   type RuntimeTraceGuardSummary,
-} from '@defai.digital/shared-runtime';
+} from '@defai.digital/shared-runtime/governance';
 
 export type RuntimeGuardSummary = RuntimeTraceGuardSummary;
 export type {

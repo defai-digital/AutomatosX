@@ -17,6 +17,15 @@
       ],
       "@defai.digital/shared-runtime": [
         "./packages/shared-runtime/dist/index.d.ts"
+      ],
+      "@defai.digital/shared-runtime/bridge": [
+        "./packages/shared-runtime/dist/runtime-public-bridge-exports.d.ts"
+      ],
+      "@defai.digital/shared-runtime/governance": [
+        "./packages/shared-runtime/dist/runtime-public-governance-exports.d.ts"
+      ],
+      "@defai.digital/shared-runtime/catalog": [
+        "./packages/shared-runtime/dist/runtime-public-catalog-exports.d.ts"
       ]
     }
   },

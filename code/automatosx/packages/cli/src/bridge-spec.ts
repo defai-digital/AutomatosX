@@ -5,9 +5,9 @@ export {
   BridgeArtifactSchema,
   BridgeSpecSchema,
   formatSchemaErrors,
-} from '@defai.digital/shared-runtime';
+} from '@defai.digital/shared-runtime/bridge';
 
 export type {
   BridgeSpec,
   SkillSpec,
-} from '@defai.digital/shared-runtime';
+} from '@defai.digital/shared-runtime/bridge';

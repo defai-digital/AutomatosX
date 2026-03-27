@@ -1,44 +1,5 @@
-export const EXPECTED_RUNTIME_VALUE_EXPORTS = [
-  'AUTOMATOSX_DIRECTORY',
-  'BRIDGE_DIRECTORY',
-  'BridgeArtifactSchema',
-  'BridgeKindSchema',
-  'BridgeSpecSchema',
-  'CANONICAL_BRIDGE_FILE',
-  'CANONICAL_SKILL_FILE',
-  'RuntimeGovernanceAggregateSchema',
-  'SKILL_DIRECTORY',
-  'SKILL_MARKDOWN_FILE',
-  'SkillDispatchModeSchema',
-  'SkillSpecSchema',
-  'buildDeniedImportedSkillAggregate',
-  'buildRuntimeGovernanceAggregate',
-  'createRuntimeBridgeService',
+export const EXPECTED_TOP_LEVEL_RUNTIME_VALUE_EXPORTS = [
   'createSharedRuntimeService',
-  'evaluateBridgeExecutionTrust',
-  'executeBridge',
-  'exportSkillDocument',
-  'extractRuntimeTraceGuardSummary',
-  'formatSchemaErrors',
-  'formatWorkflowInputSummary',
-  'getDefaultAgentCatalogEntry',
-  'getStableAgentEntry',
-  'getWorkflowCatalogEntry',
-  'importSkillDocument',
-  'installBridgeDefinition',
-  'isBundledWorkflowDir',
-  'isStableCatalogAgentEntry',
-  'listDefaultAgentCatalog',
-  'listStableAgentCapabilities',
-  'listStableAgentEntries',
-  'listWorkflowCatalog',
-  'recommendStableAgents',
-  'resolveBridgeRoot',
-  'resolveBundledWorkflowDir',
-  'resolveEffectiveWorkflowDir',
-  'resolveSkillRoot',
-  'scoreSkillAgainstQuery',
-  'toDefaultAgentRegistrations',
 ] as const;
 
 export const EXPECTED_BRIDGE_PUBLIC_VALUE_EXPORTS = [
@@ -87,6 +48,13 @@ export const EXPECTED_CATALOG_PUBLIC_VALUE_EXPORTS = [
   'isBundledWorkflowDir',
   'resolveBundledWorkflowDir',
   'resolveEffectiveWorkflowDir',
+] as const;
+
+export const EXPECTED_ALL_PUBLIC_VALUE_EXPORTS = [
+  ...EXPECTED_TOP_LEVEL_RUNTIME_VALUE_EXPORTS,
+  ...EXPECTED_BRIDGE_PUBLIC_VALUE_EXPORTS,
+  ...EXPECTED_GOVERNANCE_PUBLIC_VALUE_EXPORTS,
+  ...EXPECTED_CATALOG_PUBLIC_VALUE_EXPORTS,
 ] as const;
 
 export const BLOCKED_INTERNAL_VALUE_EXPORTS = [

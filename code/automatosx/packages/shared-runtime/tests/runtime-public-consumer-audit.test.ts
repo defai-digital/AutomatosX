@@ -3,18 +3,28 @@ import { join, relative } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import {
+  EXPECTED_ALL_PUBLIC_VALUE_EXPORTS,
   EXPECTED_AGENT_CATALOG_PUBLIC_TYPES,
   EXPECTED_BRIDGE_CONTRACT_PUBLIC_TYPES,
   EXPECTED_BRIDGE_RUNTIME_PUBLIC_TYPES,
   EXPECTED_GOVERNANCE_SUMMARY_PUBLIC_TYPES,
   EXPECTED_REVIEW_PUBLIC_TYPES,
-  EXPECTED_RUNTIME_VALUE_EXPORTS,
   EXPECTED_WORKFLOW_CATALOG_PUBLIC_TYPES,
   INTENTIONALLY_UNCONSUMED_RUNTIME_VALUE_EXPORTS,
 } from './support/runtime-public-api-manifest.js';
 
 const REPO_ROOT = join(import.meta.dirname, '..', '..', '..');
-const SHARED_RUNTIME_PACKAGE_NAME = '@defai.digital/shared-runtime';
+const SHARED_RUNTIME_PUBLIC_ENTRYPOINTS = new Set([
+  '@defai.digital/shared-runtime',
+  '@defai.digital/shared-runtime/bridge',
+  '@defai.digital/shared-runtime/governance',
+  '@defai.digital/shared-runtime/catalog',
+]);
+
+function shouldInspectSourceFile(root: string, file: string): boolean {
+  const relativePath = relative(root, file);
+  return !relativePath.startsWith('packages/shared-runtime/');
+}
 
 function collectRepoSourceFiles(root: string): string[] {
   const files: string[] = [];
@@ -38,7 +48,7 @@ function collectRepoSourceFiles(root: string): string[] {
         continue;
       }
 
-      if (path.endsWith('.ts')) {
+      if (path.endsWith('.ts') && shouldInspectSourceFile(root, path)) {
         files.push(path);
       }
     }
@@ -51,10 +61,12 @@ function collectRuntimePackageConsumers(root: string): {
   valueConsumers: Set<string>;
   typeConsumers: Set<string>;
   consumerFiles: Set<string>;
+  entrypointModules: Set<string>;
 } {
   const valueConsumers = new Set<string>();
   const typeConsumers = new Set<string>();
   const consumerFiles = new Set<string>();
+  const entrypointModules = new Set<string>();
   const files = collectRepoSourceFiles(root);
 
   for (const file of files) {
@@ -70,9 +82,11 @@ function collectRuntimePackageConsumers(root: string): {
       }
 
       const moduleName = statement.moduleSpecifier.getText(sourceFile).slice(1, -1);
-      if (moduleName !== SHARED_RUNTIME_PACKAGE_NAME) {
+      if (!SHARED_RUNTIME_PUBLIC_ENTRYPOINTS.has(moduleName)) {
         continue;
       }
+
+      entrypointModules.add(moduleName);
       consumerFiles.add(file);
 
       if (ts.isImportDeclaration(statement)) {
@@ -111,21 +125,22 @@ function collectRuntimePackageConsumers(root: string): {
     }
   }
 
-  return { valueConsumers, typeConsumers, consumerFiles };
+  return { valueConsumers, typeConsumers, consumerFiles, entrypointModules };
 }
 
 describe('shared-runtime public consumer audit', () => {
-  it('keeps only the intended direct-helper values publicly unconsumed inside the repo', () => {
+  it('keeps only the intended direct-helper values publicly unconsumed across public entrypoints', () => {
     const consumers = collectRuntimePackageConsumers(REPO_ROOT);
-    const unusedRuntimeValues = [...EXPECTED_RUNTIME_VALUE_EXPORTS]
+    const unusedRuntimeValues = [...EXPECTED_ALL_PUBLIC_VALUE_EXPORTS]
       .filter((name) => !consumers.valueConsumers.has(name))
       .sort();
 
     expect(consumers.consumerFiles.size).toBeGreaterThan(0);
+    expect([...consumers.entrypointModules].sort()).toEqual([...SHARED_RUNTIME_PUBLIC_ENTRYPOINTS].sort());
     expect(unusedRuntimeValues).toEqual([...INTENTIONALLY_UNCONSUMED_RUNTIME_VALUE_EXPORTS].sort());
   });
 
-  it('keeps the curated bridge and catalog public types actively consumed by repo code', () => {
+  it('keeps the curated bridge, governance, and catalog public types actively consumed by repo code', () => {
     const consumers = collectRuntimePackageConsumers(REPO_ROOT);
     const curatedPublicTypes = [
       ...EXPECTED_BRIDGE_CONTRACT_PUBLIC_TYPES,
@@ -142,12 +157,10 @@ describe('shared-runtime public consumer audit', () => {
     expect(unusedCuratedTypes, `Unused type exports: ${unusedCuratedTypes.join(', ')}`).toEqual([]);
   });
 
-  it('does not accidentally count internal-module imports as package-entry consumers', () => {
+  it('does not accidentally count shared-runtime internal files as public-entrypoint consumers', () => {
     const consumers = collectRuntimePackageConsumers(REPO_ROOT);
     const relativeFiles = [...consumers.consumerFiles].map((file) => relative(REPO_ROOT, file));
 
-    expect(relativeFiles.some((file) => file.includes('src/runtime-public-bridge-exports.ts'))).toBe(false);
-    expect(relativeFiles.some((file) => file.includes('src/runtime-public-governance-exports.ts'))).toBe(false);
-    expect(relativeFiles.some((file) => file.includes('src/runtime-public-catalog-exports.ts'))).toBe(false);
+    expect(relativeFiles.some((file) => file.startsWith('packages/shared-runtime/'))).toBe(false);
   });
 });

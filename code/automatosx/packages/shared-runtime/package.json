@@ -16,6 +16,18 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./bridge": {
+      "types": "./dist/runtime-public-bridge-exports.d.ts",
+      "import": "./dist/runtime-public-bridge-exports.js"
+    },
+    "./governance": {
+      "types": "./dist/runtime-public-governance-exports.d.ts",
+      "import": "./dist/runtime-public-governance-exports.js"
+    },
+    "./catalog": {
+      "types": "./dist/runtime-public-catalog-exports.d.ts",
+      "import": "./dist/runtime-public-catalog-exports.js"
     }
   },
   "dependencies": {

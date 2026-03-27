@@ -1,10 +1,8 @@
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  RuntimeGovernanceAggregateSchema,
-  createSharedRuntimeService,
-} from '@defai.digital/shared-runtime';
+import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
+import { RuntimeGovernanceAggregateSchema } from '@defai.digital/shared-runtime/governance';
 import { governanceCommand, doctorCommand, setupCommand, skillCommand, statusCommand } from '../src/commands/index.js';
 import { createMonitorApiResponse } from '../src/commands/monitor.js';
 import { buildMonitorState } from '../src/commands/monitor-state.js';

@@ -1,4 +1,4 @@
-import { formatWorkflowInputSummary } from '@defai.digital/shared-runtime';
+import { formatWorkflowInputSummary } from '@defai.digital/shared-runtime/catalog';
 import { hasCommandMetadata } from './command-metadata.js';
 import { getCommandManifestEntry } from './command-manifest.js';
 import { getWorkflowCatalogEntry } from './workflow-adapter.js';

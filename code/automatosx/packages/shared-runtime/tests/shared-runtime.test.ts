@@ -6,12 +6,10 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { TraceRecord, TraceStore } from '@defai.digital/trace-store';
-import {
-  RuntimeGovernanceAggregateSchema,
-  createRuntimeBridgeService,
-  createSharedRuntimeService,
-  resolveBundledWorkflowDir,
-} from '../src/index.js';
+import { createSharedRuntimeService } from '../src/index.js';
+import { createRuntimeBridgeService } from '../src/runtime-public-bridge-exports.js';
+import { RuntimeGovernanceAggregateSchema } from '../src/runtime-public-governance-exports.js';
+import { resolveBundledWorkflowDir } from '../src/runtime-public-catalog-exports.js';
 
 const execFileAsync = promisify(execFile);
 const SHARED_RUNTIME_PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');

@@ -1,10 +1,14 @@
 import {
-  buildDeniedImportedSkillAggregate,
-  buildRuntimeGovernanceAggregate,
   createRuntimeBridgeService,
   scoreSkillAgainstQuery,
-  type SharedRuntimeService,
   type SkillLoadSuccess,
+} from '@defai.digital/shared-runtime/bridge';
+import {
+  buildDeniedImportedSkillAggregate,
+  buildRuntimeGovernanceAggregate,
+} from '@defai.digital/shared-runtime/governance';
+import {
+  type SharedRuntimeService,
 } from '@defai.digital/shared-runtime';
 import type { MpcToolResult } from './surface-types.js';
 import {

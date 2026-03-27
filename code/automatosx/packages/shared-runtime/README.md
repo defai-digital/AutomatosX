@@ -27,6 +27,15 @@ Curated public exports are split by domain:
 - [src/runtime-public-governance-exports.ts](./src/runtime-public-governance-exports.ts)
 - [src/runtime-public-catalog-exports.ts](./src/runtime-public-catalog-exports.ts)
 
+Published subpath entrypoints mirror these domains:
+
+- `@defai.digital/shared-runtime/bridge`
+- `@defai.digital/shared-runtime/governance`
+- `@defai.digital/shared-runtime/catalog`
+
+Prefer these subpaths for domain-specific bridge, governance, and catalog consumers.
+Reserve the top-level `@defai.digital/shared-runtime` entrypoint for the runtime service factory, service types, and a small set of shared runtime-adjacent types.
+
 Internal support modules such as execution, workflow runner, provider-call helpers, dependency resolvers, and guard-summary builders are intentionally kept off the package entrypoint.
 
 ## Stability Rules
@@ -44,7 +53,11 @@ Current guardrails:
 - [tests/runtime-public-type-surface.test.ts](./tests/runtime-public-type-surface.test.ts)
   Locks bridge, governance, review, catalog, and workflow type barrels against the manifest.
 - [tests/runtime-public-consumer-audit.test.ts](./tests/runtime-public-consumer-audit.test.ts)
-  Audits repo consumers of `@defai.digital/shared-runtime` so low-level public helpers do not linger without an explicit reason.
+  Audits repo consumers across the top-level package and public subpath entrypoints so low-level public helpers do not linger without an explicit reason.
+- [tests/runtime-public-subpath-imports.test.ts](./tests/runtime-public-subpath-imports.test.ts)
+  Verifies the published subpath entrypoints resolve to the intended bridge, governance, and catalog surfaces.
+- [tests/runtime-top-level-entrypoint-audit.test.ts](./tests/runtime-top-level-entrypoint-audit.test.ts)
+  Ensures domain-specific consumers use the public subpaths instead of pulling bridge, governance, or catalog helpers from the top-level entrypoint.
 
 When changing the package entrypoint:
 

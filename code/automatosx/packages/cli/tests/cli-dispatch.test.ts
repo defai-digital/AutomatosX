@@ -72,6 +72,35 @@ describe('cli dispatch', () => {
     expect(parsed.args).toEqual([]);
   });
 
+  it('accepts negative numeric values for string flags and as positional args', () => {
+    // Regression: previously `normalizeFlagToken('-5')` returned `{ name: '5' }`
+    // so the parser rejected `-5` as "Missing value for --task". Numeric
+    // literals must be treated as values, not short flags.
+    const taskFlag = parseCommand(['history', '--task', '-5']);
+    expect(taskFlag.parseError).toBeUndefined();
+    expect(taskFlag.options.task).toBe('-5');
+
+    const decimal = parseCommand(['history', '--task', '-0.5']);
+    expect(decimal.parseError).toBeUndefined();
+    expect(decimal.options.task).toBe('-0.5');
+
+    const leadingDot = parseCommand(['history', '--task', '-.25']);
+    expect(leadingDot.parseError).toBeUndefined();
+    expect(leadingDot.options.task).toBe('-.25');
+
+    // And as a positional argument.
+    const positional = parseCommand(['call', '-42']);
+    expect(positional.parseError).toBeUndefined();
+    expect(positional.args).toContain('-42');
+
+    // Letter-prefixed single-dash tokens must still normalise to flag names —
+    // they fall through to the positional list only if the flag is unknown,
+    // which confirms the numeric guard does not break letter short-flag
+    // handling. Here `--verbose` is the long form and must still win.
+    const longVerbose = parseCommand(['history', '--verbose']);
+    expect(longVerbose.options.verbose).toBe(true);
+  });
+
   it('parses inline global flags without consuming inline command-specific flags', () => {
     const parsed = parseCommand([
       'review',

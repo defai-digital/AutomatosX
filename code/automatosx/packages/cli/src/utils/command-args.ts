@@ -143,6 +143,16 @@ export function normalizeFlagToken(token: string): NormalizedFlagToken | undefin
     return splitFlagToken(token.slice(2));
   }
   if (token.startsWith('-') && token.length > 1) {
+    // Numeric literals like "-5", "-0.3", "-.5" must be treated as values,
+    // not short flags. POSIX short flags are letters (e.g. -v, -p), so any
+    // token whose first character after the dash is a digit or decimal point
+    // is almost certainly a negative number being passed as a flag value or
+    // positional argument. Without this guard, `ax foo --task -5` would
+    // reject `-5` as "Missing value for --task".
+    const next = token.charAt(1);
+    if ((next >= '0' && next <= '9') || next === '.') {
+      return undefined;
+    }
     return splitFlagToken(token.slice(1));
   }
   return undefined;

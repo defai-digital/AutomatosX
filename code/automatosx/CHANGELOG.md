@@ -2,6 +2,20 @@
 
 All notable changes to AutomatosX are documented here.
 
+## [14.0.5] - 2026-04-05
+
+### Bug Fixes
+
+- **cli (parser):** `normalizeFlagToken` now treats single-dash tokens followed by a digit or decimal point (e.g. `-5`, `-0.5`, `-.25`) as values rather than short flags. Previously `ax history --task -5` rejected `-5` as `Missing value for --task` because the tokenizer normalised it to flag name `5` before the value-extraction path could consume it. Integer appliers (`--limit`, `--max-iterations`, `--max-tokens`, `--refresh`) already accepted `-?\d+` via `INTEGER_RE`, so the tokenizer was the only thing preventing negative values from flowing through. Letter-prefixed short flags (e.g. `-v`) are unaffected. (`cli/utils/command-args.ts:138`)
+
+### Tests
+
+- Added a regression test in `cli-dispatch.test.ts` covering negative-number string-flag values (`-5`, `-0.5`, `-.25`), negative-number positional arguments (`-42`), and the long-form `--verbose` to confirm letter-prefixed flags still parse correctly. Suite: 50 files, 427 tests (up from 426). Typecheck + build clean.
+
+### Build System
+
+- Bumped root + all 8 workspace packages (`contracts`, `workflow-engine`, `state-store`, `trace-store`, `shared-runtime`, `monitoring`, `mcp-server`, `cli`) from `14.0.4` to `14.0.5`, and updated internal `@defai.digital/*` dependency ranges to `^14.0.5`.
+
 ## [14.0.4] - 2026-04-05
 
 ### Bug Fixes

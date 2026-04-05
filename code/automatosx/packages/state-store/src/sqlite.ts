@@ -310,21 +310,39 @@ export class SqliteStateStore implements StateStore {
     const registrationKey = JSON.stringify({ agentId: entry.agentId, name: entry.name, capabilities, metadata: sortedMeta });
     const now = new Date().toISOString();
 
-    const existing = asRow<{ agent_id: string; registration_key: string }>(
-      this.db.prepare(`SELECT agent_id, registration_key FROM agents WHERE agent_id = ?`).get(entry.agentId),
-    );
-    if (existing !== undefined) {
-      if (existing.registration_key !== registrationKey) {
-        throw new Error(`Agent "${entry.agentId}" is already registered with a different configuration`);
+    // Atomic check-and-insert so two concurrent ax processes registering the
+    // same agent cannot race between the SELECT and INSERT and collide on the
+    // primary key (or silently overwrite each other). Returns an AgRow when
+    // the agent was already registered with a matching key so the caller can
+    // hydrate the existing record outside the transaction.
+    let existingRow: AgRow | undefined;
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const existing = asRow<{ agent_id: string; registration_key: string }>(
+        this.db.prepare(`SELECT agent_id, registration_key FROM agents WHERE agent_id = ?`).get(entry.agentId),
+      );
+      if (existing !== undefined) {
+        if (existing.registration_key !== registrationKey) {
+          throw new Error(`Agent "${entry.agentId}" is already registered with a different configuration`);
+        }
+        existingRow = asRow<AgRow>(
+          this.db.prepare(`SELECT * FROM agents WHERE agent_id = ?`).get(entry.agentId),
+        );
+      } else {
+        this.db.prepare(`
+          INSERT INTO agents (agent_id, name, capabilities, metadata, registration_key, registered_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(entry.agentId, entry.name, JSON.stringify(capabilities), metadata ? JSON.stringify(metadata) : null, registrationKey, now, now);
       }
-      return (await this.getAgent(entry.agentId))!;
+      this.db.exec('COMMIT');
+    } catch (err) {
+      try { this.db.exec('ROLLBACK'); } catch { /* already rolled back */ }
+      throw err;
     }
 
-    this.db.prepare(`
-      INSERT INTO agents (agent_id, name, capabilities, metadata, registration_key, registered_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(entry.agentId, entry.name, JSON.stringify(capabilities), metadata ? JSON.stringify(metadata) : null, registrationKey, now, now);
-
+    if (existingRow !== undefined) {
+      return rowToAgent(existingRow);
+    }
     return { agentId: entry.agentId, name: entry.name, capabilities, metadata, registrationKey, registeredAt: now, updatedAt: now };
   }
 
@@ -631,16 +649,27 @@ export class SqliteStateStore implements StateStore {
   }
 
   private mutateSession(sessionId: string, mutate: (s: SessionEntry) => SessionEntry): SessionEntry {
-    const row = asRow<SessRow>(this.db.prepare(`SELECT * FROM sessions WHERE session_id = ?`).get(sessionId));
-    if (!row) throw new Error(`Session not found: ${sessionId}`);
-    const session = mutate(rowToSession(row));
-    this.db.prepare(`
-      UPDATE sessions SET task=?, initiator=?, status=?, workspace=?, metadata=?, summary=?, error_msg=?, participants=?, updated_at=?
-      WHERE session_id=?
-    `).run(session.task, session.initiator, session.status, session.workspace ?? null,
-      session.metadata ? JSON.stringify(session.metadata) : null, session.summary ?? null,
-      session.error?.message ?? null, JSON.stringify(session.participants), session.updatedAt, sessionId);
-    return session;
+    // Wrap the read-modify-write in a SQLite transaction so concurrent
+    // writers from a second process (e.g. `ax monitor` + `ax run`) cannot
+    // interleave their SELECT and UPDATE and corrupt the participants list.
+    // Mirrors the pattern already used by closeStuckSessions above.
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const row = asRow<SessRow>(this.db.prepare(`SELECT * FROM sessions WHERE session_id = ?`).get(sessionId));
+      if (!row) throw new Error(`Session not found: ${sessionId}`);
+      const session = mutate(rowToSession(row));
+      this.db.prepare(`
+        UPDATE sessions SET task=?, initiator=?, status=?, workspace=?, metadata=?, summary=?, error_msg=?, participants=?, updated_at=?
+        WHERE session_id=?
+      `).run(session.task, session.initiator, session.status, session.workspace ?? null,
+        session.metadata ? JSON.stringify(session.metadata) : null, session.summary ?? null,
+        session.error?.message ?? null, JSON.stringify(session.participants), session.updatedAt, sessionId);
+      this.db.exec('COMMIT');
+      return session;
+    } catch (err) {
+      this.db.exec('ROLLBACK');
+      throw err;
+    }
   }
 
   // -------------------------------------------------------------------------

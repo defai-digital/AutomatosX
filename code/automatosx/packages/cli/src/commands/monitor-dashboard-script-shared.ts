@@ -330,12 +330,17 @@ export const MONITOR_DASHBOARD_SCRIPT_SHARED = `
       const startedAt = new Date(iso).getTime();
       if (!Number.isFinite(startedAt)) return false;
       const now = Date.now();
+      const delta = now - startedAt;
+      // Reject future timestamps: if a trace claims to have started after
+      // "now" (clock skew, test data, corrupted input) the delta is negative
+      // and would otherwise slip through every window check.
+      if (delta < 0) return false;
       const windowMs = windowId === '1h' ? 3600000
         : windowId === '6h' ? 21600000
         : windowId === '24h' ? 86400000
         : windowId === '7d' ? 604800000
         : Number.POSITIVE_INFINITY;
-      return now - startedAt <= windowMs;
+      return delta <= windowMs;
     }
 
     function extractTraceProviders(trace) {

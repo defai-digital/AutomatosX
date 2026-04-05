@@ -2,6 +2,22 @@
 
 All notable changes to AutomatosX are documented here.
 
+## [14.0.4] - 2026-04-05
+
+### Bug Fixes
+
+- **cli/monitor:** `withinTimeWindow` no longer passes future-dated traces through every window check. Previously a trace whose `startedAt` was after `Date.now()` (clock skew, corrupt fixture, malicious input) produced a negative delta that was always `<= windowMs`, so bogus "from the future" runs would leak into Last 1h / Last 7d views. Deltas `< 0` now return `false`. (`monitor-dashboard-script-shared.ts:338`)
+- **state-store (sqlite):** `mutateSession` (the helper behind `joinSession` / `leaveSession` / `completeSession` / `failSession`) now wraps its SELECT + UPDATE in a `BEGIN IMMEDIATE` / `COMMIT` transaction so a second `ax` process (e.g. `ax monitor` + `ax run`) cannot interleave and corrupt the participants list. Mirrors the pattern already used by `closeStuckSessions`. (`state-store/src/sqlite.ts:633`)
+- **state-store (sqlite):** `registerAgent` now performs its existence-check and insert inside a single `BEGIN IMMEDIATE` transaction so two concurrent processes registering the same `agentId` can no longer race between the SELECT and INSERT and collide on the primary key. Idempotent re-registration with an identical configuration is preserved. (`state-store/src/sqlite.ts:306`)
+
+### Tests
+
+- Added two new monitor dashboard tests covering the future-timestamp filter and the filter-aware empty-state hint. Suite: 50 files, 426 tests (up from 424), all green. Typecheck + build clean.
+
+### Build System
+
+- Bumped root + all 8 workspace packages (`contracts`, `workflow-engine`, `state-store`, `trace-store`, `shared-runtime`, `monitoring`, `mcp-server`, `cli`) from `14.0.3` to `14.0.4`, and updated internal `@defai.digital/*` dependency ranges to `^14.0.4`.
+
 ## [14.0.3] - 2026-04-05
 
 ### Bug Fixes

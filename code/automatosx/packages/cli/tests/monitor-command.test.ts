@@ -328,6 +328,63 @@ describe('monitor command helpers', () => {
     expect(context.document.getElementById('app').innerHTML).not.toContain('Page 2 of 2');
   });
 
+  it('hides future-dated traces from the activity time window', () => {
+    const state = createMonitorState();
+    const now = Date.now();
+    state.traces = [
+      {
+        traceId: 'trace-future',
+        workflowId: 'workflow-future',
+        surface: 'cli',
+        status: 'completed',
+        // One day in the future — clock skew / bad fixture / malicious input.
+        startedAt: new Date(now + 86_400_000).toISOString(),
+        stepResults: [],
+      },
+      {
+        traceId: 'trace-recent',
+        workflowId: 'workflow-recent',
+        surface: 'cli',
+        status: 'completed',
+        startedAt: new Date(now - 60_000).toISOString(),
+        stepResults: [],
+      },
+    ];
+
+    const context = executeDashboardScript(buildDashboardHtml(state));
+    context.switchTab('activity');
+
+    const html = context.document.getElementById('app').innerHTML;
+    expect(html).toContain('data-trace-id="trace-recent"');
+    expect(html).not.toContain('data-trace-id="trace-future"');
+    // The workflow dropdown should only list workflows with in-window runs.
+    expect(html).toContain('workflow-recent');
+    expect(html).not.toContain('>workflow-future<');
+  });
+
+  it('shows a filter-aware empty state when all runs are filtered out', () => {
+    const state = createMonitorState();
+    const now = Date.now();
+    state.traces = [{
+      traceId: 'trace-visible',
+      workflowId: 'workflow-a',
+      surface: 'cli',
+      status: 'completed',
+      startedAt: new Date(now - 60_000).toISOString(),
+      stepResults: [],
+    }];
+
+    const context = executeDashboardScript(buildDashboardHtml(state));
+    context.switchTab('activity');
+    // Narrow the search so nothing matches, forcing the filtered-empty path.
+    context.setActivitySearch('zzz-no-such-workflow');
+
+    const html = context.document.getElementById('app').innerHTML;
+    expect(html).toContain('No runs match the current filters');
+    // The first-run onboarding hint must NOT appear — the user clearly has data.
+    expect(html).not.toContain('No workflow runs yet');
+  });
+
   it('boots the dashboard even when the url hash is malformed', () => {
     const html = buildDashboardHtml(createMonitorState());
     expect(() => executeDashboardScript(html, {

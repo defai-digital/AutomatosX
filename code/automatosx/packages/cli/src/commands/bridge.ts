@@ -1,4 +1,5 @@
 import type { CLIOptions, CommandResult } from '../types.js';
+import { formatPrettyJsonBlock } from '../json-file-write.js';
 import {
   discoverBridgeDefinitions,
   installBridgeDefinition,
@@ -150,7 +151,7 @@ function formatBridgeInspect(entry: BridgeLoadSuccess): string {
     `Version: ${entry.definition.version}`,
     `Entrypoint: ${entry.definition.entrypoint.type}`,
     '',
-    JSON.stringify(entry.definition, null, 2),
+    formatPrettyJsonBlock(entry.definition),
   ].join('\n');
 }
 

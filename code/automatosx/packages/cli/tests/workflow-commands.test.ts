@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { createTraceStore } from '@defai.digital/trace-store';
 import {
   WORKFLOW_COMMAND_DEFINITIONS,
   architectCommand,
@@ -257,6 +258,62 @@ describe('workflow commands', () => {
     expect(traceResult.message).toContain('Status: completed');
   });
 
+  it('shows checkpoint details in trace output when a workflow can be resumed from cached state', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const traceStore = createTraceStore({ basePath: tempDir });
+    await traceStore.upsertTrace({
+      traceId: 'checkpoint-trace-001',
+      workflowId: 'ship',
+      surface: 'cli',
+      status: 'failed',
+      startedAt: '2026-03-26T10:00:00.000Z',
+      completedAt: '2026-03-26T10:05:00.000Z',
+      stepResults: [
+        {
+          stepId: 'plan',
+          success: true,
+          durationMs: 10,
+          retryCount: 0,
+        },
+        {
+          stepId: 'review',
+          success: true,
+          durationMs: 12,
+          retryCount: 0,
+        },
+        {
+          stepId: 'ship',
+          success: false,
+          durationMs: 3,
+          retryCount: 0,
+          error: 'provider timeout',
+        },
+      ],
+      checkpoint: {
+        lastCompletedStepIndex: 1,
+        lastCompletedStepId: 'review',
+        checkpointedAt: '2026-03-26T10:04:00.000Z',
+        workflowHash: 'resumehash001',
+        stepOutputs: {
+          plan: { summary: 'cached plan' },
+          review: { summary: 'cached review' },
+        },
+      },
+    });
+
+    const traceResult = await traceCommand(
+      ['checkpoint-trace-001'],
+      defaultOptions({ basePath: tempDir }),
+    );
+
+    expect(traceResult.success).toBe(true);
+    expect(traceResult.message).toContain('Trace: checkpoint-trace-001');
+    expect(traceResult.message).toContain('Status: failed');
+    expect(traceResult.message).toContain('Checkpoint: step 2 (review) at 2026-03-26T10:04:00.000Z');
+  });
+
   it('returns workflow-first help and quickstart content', async () => {
     const result = await helpCommand([], defaultOptions());
 
@@ -276,11 +333,13 @@ describe('workflow commands', () => {
     expect(result.message).toContain('ax session');
     expect(result.message).toContain('ax review');
     expect(result.message).toContain('ax governance');
+    expect(result.message).toContain('Stable support commands:');
+    expect(result.message).toContain('Advanced commands:');
 
     const data = result.data as {
       workflowFirst?: boolean;
       quickstart?: string;
-      commands?: Array<{ command: string; stable: boolean }>;
+      commands?: Array<{ command: string; stable: boolean; productTier?: string }>;
     };
 
     expect(data.workflowFirst).toBe(true);
@@ -300,13 +359,16 @@ describe('workflow commands', () => {
       'session',
       'review',
     ]));
-    expect(data.commands?.every((entry) => entry.stable)).toBe(true);
+    expect(data.commands?.some((entry) => entry.productTier === 'stable')).toBe(true);
+    expect(data.commands?.some((entry) => entry.productTier === 'advanced')).toBe(true);
   });
 
   it('renders workflow-specific command help with ownership and examples', () => {
     const help = getCommandHelp('architect');
     const qaHelp = getCommandHelp('qa');
     const releaseHelp = getCommandHelp('release');
+    const scaffoldHelp = getCommandHelp('scaffold');
+    const guardHelp = getCommandHelp('guard');
 
     expect(help).toContain('AutomatosX v14 Help: architect');
     expect(help).toContain('Owner agent: architect');
@@ -317,6 +379,13 @@ describe('workflow commands', () => {
     expect(qaHelp).toContain('Required inputs: target and url');
     expect(releaseHelp).toContain('Required inputs: releaseVersion');
     expect(releaseHelp).toContain('Optional inputs: commits, target');
+    expect(scaffoldHelp).toContain('ax scaffold policy <policy-id>');
+    expect(scaffoldHelp).not.toContain('ax scaffold guard <policy-id>');
+    expect(guardHelp).toContain('AutomatosX v14 Help: policy');
+    expect(guardHelp).toContain('Legacy alias: ax guard');
+    expect(guardHelp).toContain('Canonical command: ax policy');
+    expect(getCommandHelp('review')).toContain('Tier: stable');
+    expect(getCommandHelp('session')).toContain('Tier: advanced');
   });
 
   it('runs first-class workflows from bundled shared definitions when no local workflow directory exists', async () => {

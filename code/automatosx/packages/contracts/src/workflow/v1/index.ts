@@ -27,6 +27,7 @@ export {
   GoalAnchorTriggerSchema,
   GoalAnchorConfigSchema,
   GoalAnchorContextSchema,
+  CheckpointRecordSchema,
   DEFAULT_STEP_GUARD,
   createStepGuardResult,
   createProgressEvent,
@@ -43,4 +44,5 @@ export {
   type GoalAnchorTrigger,
   type GoalAnchorConfig,
   type GoalAnchorContext,
+  type CheckpointRecord,
 } from './step-guard.js';

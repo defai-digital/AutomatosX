@@ -1,25 +1,41 @@
 import { describe, expect, it } from 'vitest';
+import type { SessionEntry, StateStore } from '@defai.digital/state-store';
+import type { TraceRecord } from '@defai.digital/trace-store';
 import { createRuntimeProviderCallService } from '../src/runtime-provider-call-service.js';
 
 describe('runtime provider call service', () => {
   it('records subprocess provider responses as completed traces', async () => {
-    const traces: Array<Record<string, unknown>> = [];
-    const createdSessions: Array<Record<string, unknown>> = [];
+    const traces: TraceRecord[] = [];
+    const createdSessions: SessionEntry[] = [];
+    const traceStore = {
+      upsertTrace: async (trace: TraceRecord) => {
+        traces.push(trace);
+        return trace;
+      },
+    };
+    const stateStore: Pick<StateStore, 'getSession' | 'createSession'> = {
+      getSession: async () => undefined,
+      createSession: async (entry) => {
+        const now = '2026-03-27T00:00:00.000Z';
+        const session: SessionEntry = {
+          sessionId: entry.sessionId ?? 'generated-session',
+          task: entry.task,
+          initiator: entry.initiator,
+          status: 'active',
+          workspace: entry.workspace,
+          metadata: entry.metadata,
+          participants: [],
+          createdAt: now,
+          updatedAt: now,
+        };
+        createdSessions.push(session);
+        return session;
+      },
+    };
     const service = createRuntimeProviderCallService({
       basePath: '/tmp/runtime-call',
-      traceStore: {
-        upsertTrace: async (trace) => {
-          traces.push(trace as Record<string, unknown>);
-          return trace;
-        },
-      } as never,
-      stateStore: {
-        getSession: async () => undefined,
-        createSession: async (session) => {
-          createdSessions.push(session as Record<string, unknown>);
-          return session;
-        },
-      } as never,
+      traceStore: traceStore as never,
+      stateStore: stateStore as StateStore,
       resolveProviderBridge: () => ({
         executePrompt: async (request) => ({
           type: 'response',
@@ -61,19 +77,31 @@ describe('runtime provider call service', () => {
   });
 
   it('falls back to simulated output when no provider executor is configured', async () => {
-    const traces: Array<Record<string, unknown>> = [];
+    const traces: TraceRecord[] = [];
+    const traceStore = {
+      upsertTrace: async (trace: TraceRecord) => {
+        traces.push(trace);
+        return trace;
+      },
+    };
+    const stateStore: Pick<StateStore, 'getSession' | 'createSession'> = {
+      getSession: async () => undefined,
+      createSession: async (entry) => ({
+        sessionId: entry.sessionId ?? 'generated-session',
+        task: entry.task,
+        initiator: entry.initiator,
+        status: 'active',
+        workspace: entry.workspace,
+        metadata: entry.metadata,
+        participants: [],
+        createdAt: '2026-03-27T00:00:00.000Z',
+        updatedAt: '2026-03-27T00:00:00.000Z',
+      }),
+    };
     const service = createRuntimeProviderCallService({
       basePath: '/tmp/runtime-call',
-      traceStore: {
-        upsertTrace: async (trace) => {
-          traces.push(trace as Record<string, unknown>);
-          return trace;
-        },
-      } as never,
-      stateStore: {
-        getSession: async () => undefined,
-        createSession: async (session) => session,
-      } as never,
+      traceStore: traceStore as never,
+      stateStore: stateStore as StateStore,
       resolveProviderBridge: () => ({
         executePrompt: async () => ({
           type: 'unavailable',

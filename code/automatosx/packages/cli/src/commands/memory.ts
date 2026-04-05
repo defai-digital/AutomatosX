@@ -1,4 +1,5 @@
 import type { CLIOptions, CommandResult } from '../types.js';
+import { formatPrettyJsonBlock } from '../json-file-write.js';
 import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
 import { parseCommandArgs } from '../utils/command-args.js';
 import { parseJsonValueString } from '../utils/validation.js';
@@ -76,7 +77,7 @@ export async function memoryCommand(args: string[], options: CLIOptions): Promis
         `Key: ${entry.key}`,
         `Namespace: ${entry.namespace ?? 'default'}`,
         `Updated: ${entry.updatedAt}`,
-        `Value: ${typeof entry.value === 'string' ? entry.value : JSON.stringify(entry.value, null, 2)}`,
+        `Value: ${typeof entry.value === 'string' ? entry.value : formatPrettyJsonBlock(entry.value)}`,
       ];
       return success(lines.join('\n'), entry);
     }

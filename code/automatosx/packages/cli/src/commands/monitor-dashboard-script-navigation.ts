@@ -55,7 +55,7 @@ export const MONITOR_DASHBOARD_SCRIPT_NAVIGATION = `
         case 'agents': return renderAgents(state);
         case 'workflows': return renderWorkflows(state);
         case 'providers': return renderProviders(state);
-        case 'raw': return '<div class="section"><h2>Raw State</h2><pre>' + esc(JSON.stringify(state, null, 2)) + '</pre></div>';
+        case 'raw': return renderJsonPreSection('Raw State', state);
         default: return renderOverview(state);
       }
     }

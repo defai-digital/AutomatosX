@@ -54,6 +54,7 @@ export const WorkflowStepSchema = z.object({
   config: z.record(z.unknown()).optional(),
   dependencies: z.array(z.string().max(64)).optional(),
   tool: z.string().max(128).optional(),
+  noCache: z.boolean().optional(),
 }).strict();
 
 export type WorkflowStep = z.infer<typeof WorkflowStepSchema>;

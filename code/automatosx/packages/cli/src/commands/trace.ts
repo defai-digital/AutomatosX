@@ -59,6 +59,11 @@ export async function traceCommand(args: string[], options: CLIOptions): Promise
       `Duration: ${analysis.durationMs}ms`,
       `Steps: ${analysis.totalSteps} total, ${analysis.successfulSteps} ok, ${analysis.failedSteps} failed`,
       `Retries: ${analysis.retryCount}`,
+      ...(
+        analysis.checkpointStepIndex !== undefined
+          ? [`Checkpoint: step ${analysis.checkpointStepIndex + 1}${analysis.resumable ? ' [resumable]' : ''}`]
+          : []
+      ),
       `Slowest step: ${analysis.slowestStep?.stepId ?? 'n/a'}${analysis.slowestStep === undefined ? '' : ` (${analysis.slowestStep.durationMs}ms)`}`,
       ...(
         analysis.guard === undefined
@@ -114,6 +119,13 @@ export async function traceCommand(args: string[], options: CLIOptions): Promise
       `Session: ${typeof trace.metadata?.sessionId === 'string' ? trace.metadata.sessionId : 'n/a'}`,
       `Started: ${trace.startedAt}`,
       `Completed: ${trace.completedAt ?? 'running'}`,
+      ...(
+        trace.checkpoint === undefined
+          ? []
+          : [
+              `Checkpoint: step ${trace.checkpoint.lastCompletedStepIndex + 1} (${trace.checkpoint.lastCompletedStepId}) at ${trace.checkpoint.checkpointedAt}`,
+            ]
+      ),
       ...(
         guard === undefined
           ? []

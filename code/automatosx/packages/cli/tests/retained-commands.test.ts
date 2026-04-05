@@ -2,13 +2,14 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { MCP_BASE_PATH_ENV_VAR } from '@defai.digital/mcp-server';
+import { DEFAULT_SETUP_MCP_TOOL_FAMILIES, MCP_BASE_PATH_ENV_VAR } from '@defai.digital/mcp-server';
 import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
 import { RuntimeGovernanceAggregateSchema } from '@defai.digital/shared-runtime/governance';
 import {
+  ADVANCED_SUPPORT_COMMANDS,
   DEFAULT_ENTRY_PATH_COMMANDS,
   README_WORKFLOW_COMMANDS,
-  RETAINED_HIGH_VALUE_COMMANDS,
+  STABLE_SUPPORT_COMMANDS,
 } from '../src/command-metadata.js';
 import {
   doctorCommand,
@@ -72,24 +73,48 @@ describe('retained high-value commands', () => {
     await Promise.all(tempDirs.splice(0).map((tempDir) => rm(tempDir, { recursive: true, force: true })));
   });
 
-  it('keeps checked-in workflow-first docs aligned with the shared command surface', async () => {
+  it('keeps checked-in AX Trust docs aligned with the shared command surface', async () => {
     const agentsMd = await readFile(join(WORKSPACE_ROOT, 'AGENTS.md'), 'utf8');
     const readme = await readFile(join(WORKSPACE_ROOT, 'README.md'), 'utf8');
 
-    expect(agentsMd).toContain('This repository is configured for AutomatosX v14.');
+    expect(agentsMd).toContain('This repository is configured for AutomatosX v14');
     for (const usage of DEFAULT_ENTRY_PATH_COMMANDS) {
       expect(agentsMd).toContain(`- ${usage}`);
     }
-    for (const usage of RETAINED_HIGH_VALUE_COMMANDS) {
+    for (const usage of STABLE_SUPPORT_COMMANDS) {
+      expect(agentsMd).toContain(`- ${usage}`);
+    }
+    for (const usage of ADVANCED_SUPPORT_COMMANDS) {
       expect(agentsMd).toContain(`- ${usage}`);
     }
     for (const usage of README_WORKFLOW_COMMANDS) {
       expect(readme).toContain(usage);
     }
-    expect(readme).toContain('ax iterate <command> --max-iterations 3');
+    expect(readme).toContain('Advanced surfaces still available in the CLI include');
+    expect(readme).toContain('AutomatosX is the product family.');
+    expect(readme).toContain('This repository is being repositioned as `AX Trust`');
     expect(readme).not.toContain('ax audit --scope <path>');
     expect(readme).not.toContain('ax qa --target <service> --url <url>');
     expect(readme).not.toContain('ax iterate <command> --max-rounds 3');
+    expect(readme).toContain('## Built-in stable agents');
+    expect(readme).toContain('- `architect`');
+    expect(readme).toContain('- `quality`');
+    expect(readme).toContain('- `bug-hunter`');
+    expect(readme).toContain('- `release-manager`');
+    expect(readme).not.toContain('Available agents (28 total)');
+    expect(readme).not.toContain('`frontend`');
+    expect(readme).not.toContain('`product`');
+
+    expect(readme).toContain('`workflow_run`');
+    expect(readme).toContain('`workflow_list`');
+    expect(readme).toContain('`workflow_describe`');
+    expect(readme).toContain('`discuss_run`');
+    expect(readme).toContain('`agent_run`');
+    expect(readme).toContain('`review_analyze`');
+    expect(readme).not.toContain('`ax_workflow_run`');
+    expect(readme).not.toContain('`ax_discuss`');
+    expect(readme).not.toContain('`ax_agent_run`');
+    expect(readme).not.toContain('`ax_review_analyze`');
   });
 
   it('bootstraps local workspace state with setup', async () => {
@@ -107,6 +132,10 @@ describe('retained high-value commands', () => {
     expect(config.workflowArtifactDir).toBe('.automatosx/workflows');
     expect(config.runtimeStoreDir).toBe('.automatosx/runtime');
     expect(result.message).toContain('Detected provider clients: claude, gemini, codex');
+    expect(result.message).toContain('Default Surface');
+    expect(result.message).toContain('Workflow-first entry paths:');
+    expect(result.message).toContain('Stable support commands:');
+    expect(result.message).toContain('Advanced commands remain available:');
 
     const environment = JSON.parse(await readFile(join(tempDir, '.automatosx', 'environment.json'), 'utf8')) as {
       providers?: Array<{ providerId: string; installed: boolean }>;
@@ -193,6 +222,9 @@ describe('retained high-value commands', () => {
     };
     expect(mcpConfig.tools).toContain('workflow_run');
     expect(mcpConfig.tools).toContain('trace_list');
+    expect(mcpConfig.tools).toEqual([...DEFAULT_SETUP_MCP_TOOL_FAMILIES]);
+    expect(mcpConfig.tools).not.toContain('design_api');
+    expect(mcpConfig.tools).not.toContain('memory_store');
     expect(mcpConfig.transport).toBe('stdio');
     expect(mcpConfig.command).toBe('ax');
     expect(mcpConfig.args).toEqual(['mcp', 'serve']);
@@ -316,8 +348,10 @@ describe('retained high-value commands', () => {
     expect(result.message).toContain('Overall status: warning');
     expect(result.message).toContain('Workflow discovery succeeded');
     expect(result.message).toContain('MCP surface is available');
+    expect(result.message).toContain('stable workflow-first contract present');
     expect(result.message).toContain('Provider integration summary loaded');
     expect(result.message).toContain('Provider integration artifacts are present for all enabled providers.');
+    expect(result.message).toContain('Stable bootstrap artifacts are present');
     expect(result.message).toContain('Trace store is readable but has no traces yet.');
 
     const data = result.data as { status: string; summary: { fail: number; warn: number } };
@@ -342,11 +376,30 @@ describe('retained high-value commands', () => {
     expect(result.success).toBe(true);
     expect(result.message).toContain('Provider integration drift detected');
     expect(result.message).toContain('.cursor/mcp.json');
+    expect(result.message).toContain('Stable bootstrap artifacts are present');
 
     const data = result.data as { status: string; summary: { fail: number; warn: number } };
     expect(data.status).toBe('warning');
     expect(data.summary.fail).toBe(0);
     expect(data.summary.warn).toBe(2);
+  });
+
+  it('does not treat provider-specific MCP registration as a missing stable bootstrap artifact', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+    process.env.AUTOMATOSX_INIT_AVAILABLE_CLIENTS = 'claude,cursor,gemini,codex,grok';
+
+    await setupCommand(['--skip-mcp'], defaultOptions({ outputDir: tempDir }));
+
+    const result = await doctorCommand([], defaultOptions({
+      outputDir: tempDir,
+      workflowDir: CLI_WORKFLOW_DIR,
+    }));
+
+    expect(result.success).toBe(true);
+    expect(result.message).toContain('Stable bootstrap artifacts are present');
+    expect(result.message).not.toContain('Stable bootstrap artifacts are incomplete');
+    expect(result.message).toContain('Provider integration summary loaded');
   });
 
   it('surfaces recent runtime governance blocks through doctor', async () => {
@@ -729,14 +782,14 @@ describe('retained high-value commands', () => {
 
     const detailResult = await traceCommand(['cli-trace-guard-001'], defaultOptions({ outputDir: tempDir }));
     expect(detailResult.success).toBe(true);
-    expect(detailResult.message).toContain('Guard: Runtime governance blocked step "run-skill"');
-    expect(detailResult.message).toContain('Guard tool: skill.run');
-    expect(detailResult.message).toContain('Guard trust: implicit-local');
-    expect(detailResult.message).toContain('Guard requires: trusted-id');
+    expect(detailResult.message).toContain('Policy: Runtime governance blocked step "run-skill"');
+    expect(detailResult.message).toContain('Policy tool: skill.run');
+    expect(detailResult.message).toContain('Policy trust: implicit-local');
+    expect(detailResult.message).toContain('Policy requires: trusted-id');
 
     const analysisResult = await traceCommand(['analyze', 'cli-trace-guard-001'], defaultOptions({ outputDir: tempDir }));
     expect(analysisResult.success).toBe(true);
-    expect(analysisResult.message).toContain('Guard: Runtime governance blocked step "run-skill"');
+    expect(analysisResult.message).toContain('Policy: Runtime governance blocked step "run-skill"');
     expect(analysisResult.message).toContain('RUNTIME_GOVERNANCE_BLOCK');
     expect(analysisResult.data).toMatchObject({
       traceId: 'cli-trace-guard-001',

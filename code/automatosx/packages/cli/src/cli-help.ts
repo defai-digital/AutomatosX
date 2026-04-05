@@ -1,18 +1,27 @@
 import { formatWorkflowInputSummary } from '@defai.digital/shared-runtime/catalog';
-import { hasCommandMetadata } from './command-metadata.js';
+import { getCommandMetadata, hasCommandMetadata, resolveCommandAlias } from './command-metadata.js';
 import { getCommandManifestEntry } from './command-manifest.js';
 import { getWorkflowCatalogEntry } from './workflow-adapter.js';
 
 export function formatCommandHelp(command: string): string {
+  const canonicalCommand = resolveCommandAlias(command);
   const entry = getCommandManifestEntry(command);
   if (entry === undefined) {
     return 'Command help is not available.';
   }
+  const metadata = getCommandMetadata(command);
 
-  const workflow = getWorkflowCatalogEntry(command);
+  const workflow = getWorkflowCatalogEntry(canonicalCommand);
+  const aliasNote = canonicalCommand === command
+    ? []
+    : [
+        '',
+        `Legacy alias: ax ${command}`,
+        `Canonical command: ax ${canonicalCommand}`,
+      ];
   if (workflow !== undefined) {
     return [
-      `AutomatosX v14 Help: ${command}`,
+      `AutomatosX v14 Help: ${canonicalCommand}`,
       '',
       workflow.description,
       '',
@@ -33,6 +42,7 @@ export function formatCommandHelp(command: string): string {
       '',
       'Usage:',
       ...entry.usage.map((usage) => `  ${usage}`),
+      ...aliasNote,
       '',
       'Examples:',
       ...workflow.examples.map((example) => `  ${example}`),
@@ -40,13 +50,16 @@ export function formatCommandHelp(command: string): string {
   }
 
   return [
-    `AutomatosX v14 Help: ${command}`,
+    `AutomatosX v14 Help: ${canonicalCommand}`,
     '',
     entry.description,
     '',
+    metadata === undefined ? undefined : `Tier: ${metadata.productTier}`,
+    metadata === undefined ? undefined : '',
     'Usage:',
     ...entry.usage.map((usage) => `  ${usage}`),
-  ].join('\n');
+    ...aliasNote,
+  ].filter((line): line is string => line !== undefined).join('\n');
 }
 
 export function getCommandHelp(command: string): string | undefined {

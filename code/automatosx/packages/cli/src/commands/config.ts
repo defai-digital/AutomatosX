@@ -1,4 +1,5 @@
 import type { CLIOptions, CommandResult } from '../types.js';
+import { formatPrettyJsonBlock } from '../json-file-write.js';
 import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
 import { findUnexpectedFlag, parseJsonValueString } from '../utils/validation.js';
 
@@ -17,7 +18,7 @@ export async function configCommand(args: string[], options: CLIOptions): Promis
       const config = await runtime.showConfig();
       return success([
         'Workspace config:',
-        JSON.stringify(config, null, 2),
+        formatPrettyJsonBlock(config),
       ].join('\n'), config);
     }
     case 'get': {
@@ -34,7 +35,7 @@ export async function configCommand(args: string[], options: CLIOptions): Promis
       const value = await runtime.getConfig(path);
       return success([
         `Config value: ${path}`,
-        JSON.stringify(value, null, 2),
+        formatPrettyJsonBlock(value),
       ].join('\n'), value);
     }
     case 'set': {

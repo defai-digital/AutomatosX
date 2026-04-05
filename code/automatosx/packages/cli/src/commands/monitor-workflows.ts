@@ -21,10 +21,8 @@ export async function loadMonitorWorkflowDetail(
 ): Promise<MonitorWorkflowEntry | undefined> {
   const summary = stateWorkflows.find((workflow) => workflow.workflowId === workflowId);
   const catalogEntry = getWorkflowCatalogEntry(workflowId);
-  const candidateDirs = uniqueStringValues([
-    workflowDir,
-    catalogEntry === undefined ? undefined : resolveBundledWorkflowDir(),
-  ]);
+  const bundledWorkflowDir = catalogEntry === undefined ? undefined : resolveBundledWorkflowDir();
+  const candidateDirs = uniqueStringValues([workflowDir, bundledWorkflowDir]);
 
   let describedWorkflow: Awaited<ReturnType<RuntimeService['describeWorkflow']>> | undefined;
   for (const candidateDir of candidateDirs) {
@@ -42,6 +40,14 @@ export async function loadMonitorWorkflowDetail(
     return undefined;
   }
 
+  const source = summary?.source ?? resolveMonitorWorkflowSource({
+    describedSource: describedWorkflow?.source,
+    describedWorkflowDir: describedWorkflow?.workflowDir,
+    workflowDir,
+    bundledWorkflowDir,
+    fallback: 'stable-catalog',
+  });
+
   return {
     workflowId: summary?.workflowId ?? describedWorkflow?.workflowId ?? catalogEntry?.workflowId ?? workflowId,
     name: summary?.name ?? describedWorkflow?.name ?? catalogEntry?.workflowName,
@@ -57,15 +63,7 @@ export async function loadMonitorWorkflowDetail(
     examples: summary?.examples ?? cloneOptionalStringArray(catalogEntry?.examples),
     stages: summary?.stages ?? cloneOptionalStringArray(catalogEntry?.stages),
     stableSurface: summary?.stableSurface ?? catalogEntry !== undefined,
-    source: summary?.source ?? (
-      describedWorkflow !== undefined
-        ? (
-          describedWorkflow.source === 'stable-catalog'
-            ? 'stable-catalog'
-            : (isBundledWorkflowDir(describedWorkflow.workflowDir) ? 'bundled-definition' : 'workspace-definition')
-        )
-        : 'stable-catalog'
-    ),
+    source,
     stepDefinitions: describedWorkflow?.steps.map((step) => ({
       stepId: step.stepId,
       type: step.type,
@@ -94,7 +92,11 @@ export async function loadMonitorWorkflows(
     .map((workflow) => ({
       ...workflow,
       stableSurface: false,
-      source: isBundledWorkflowDir(workflowDir) ? 'bundled-definition' : 'workspace-definition',
+      source: resolveMonitorWorkflowSource({
+        workflowDir,
+        bundledWorkflowDir,
+        fallback: 'workspace-definition',
+      }),
     }));
 
   return [...stableCatalog, ...customWorkflows];
@@ -106,6 +108,12 @@ function mergeWorkflowSummary(
   workflowDir: string | undefined,
   bundledWorkflowDir: string | undefined,
 ): MonitorWorkflowEntry {
+  const source = resolveMonitorWorkflowSource({
+    workflowDir,
+    bundledWorkflowDir,
+    fallback: discovered === undefined ? 'stable-catalog' : 'workspace-definition',
+  });
+
   return {
     workflowId: catalogEntry.workflowId,
     name: discovered?.name ?? catalogEntry.workflowName,
@@ -121,12 +129,32 @@ function mergeWorkflowSummary(
     examples: [...catalogEntry.examples],
     stages: [...catalogEntry.stages],
     stableSurface: true,
-    source: discovered === undefined
-      ? 'stable-catalog'
-      : (workflowDir !== undefined && bundledWorkflowDir !== undefined && workflowDir === bundledWorkflowDir
-        ? 'bundled-definition'
-        : 'workspace-definition'),
+    source,
   };
+}
+
+function resolveMonitorWorkflowSource(input: {
+  describedSource?: 'stable-catalog' | 'workflow-definition';
+  describedWorkflowDir?: string;
+  workflowDir?: string;
+  bundledWorkflowDir?: string;
+  fallback: MonitorWorkflowEntry['source'];
+}): MonitorWorkflowEntry['source'] {
+  if (input.describedSource === 'stable-catalog') {
+    return 'stable-catalog';
+  }
+
+  const candidateWorkflowDir = input.describedWorkflowDir ?? input.workflowDir;
+  if (
+    candidateWorkflowDir !== undefined
+    && input.bundledWorkflowDir !== undefined
+    && isBundledWorkflowDir(candidateWorkflowDir)
+    && candidateWorkflowDir === input.bundledWorkflowDir
+  ) {
+    return 'bundled-definition';
+  }
+
+  return input.fallback;
 }
 
 function uniqueStringValues(values: Array<string | undefined>): string[] {

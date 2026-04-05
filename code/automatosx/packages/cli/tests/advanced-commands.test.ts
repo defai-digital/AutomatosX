@@ -13,6 +13,7 @@ import {
   historyCommand,
   listCommand,
   mcpCommand,
+  policyCommand,
   runCommand,
   sessionCommand,
   setupCommand,
@@ -564,20 +565,21 @@ describe('advanced retained commands', () => {
     expect(result.message).toContain('stuck-trace-001');
   });
 
-  it('lists, applies, and checks guard policies through the CLI command', async () => {
+  it('lists, applies, and checks trust policies through the canonical CLI command', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
 
-    const listResult = await guardCommand(['list'], defaultOptions({ outputDir: tempDir }));
+    const listResult = await policyCommand(['list'], defaultOptions({ outputDir: tempDir }));
     expect(listResult.success).toBe(true);
     expect(listResult.message).toContain('step-validation');
     expect(listResult.message).toContain('safe-filesystem');
+    expect(listResult.message).toContain('Trust policies:');
 
-    const applyResult = await guardCommand(['apply', 'step-validation'], defaultOptions({ outputDir: tempDir }));
+    const applyResult = await policyCommand(['apply', 'step-validation'], defaultOptions({ outputDir: tempDir }));
     expect(applyResult.success).toBe(true);
-    expect(applyResult.message).toContain('Guard policy applied: step-validation');
+    expect(applyResult.message).toContain('Trust policy applied: step-validation');
 
-    const checkResult = await guardCommand(['check'], defaultOptions({
+    const checkResult = await policyCommand(['check'], defaultOptions({
       outputDir: tempDir,
       input: JSON.stringify({
         policyId: 'step-validation',
@@ -587,10 +589,10 @@ describe('advanced retained commands', () => {
       }),
     }));
     expect(checkResult.success).toBe(true);
-    expect(checkResult.message).toContain('Guard check: blocked');
+    expect(checkResult.message).toContain('Policy check: blocked');
     expect(checkResult.message).toContain('validate-step-config');
 
-    const filesystemCheckResult = await guardCommand(['check'], defaultOptions({
+    const filesystemCheckResult = await policyCommand(['check'], defaultOptions({
       outputDir: tempDir,
       input: JSON.stringify({
         policyId: 'safe-filesystem',
@@ -605,11 +607,20 @@ describe('advanced retained commands', () => {
       }),
     }));
     expect(filesystemCheckResult.success).toBe(true);
-    expect(filesystemCheckResult.message).toContain('Guard check: blocked');
+    expect(filesystemCheckResult.message).toContain('Policy check: blocked');
     expect(filesystemCheckResult.message).toContain('enforce-allowed-paths');
   });
 
-  it('rejects invalid guard input types before writing policy state or building guard context', async () => {
+  it('keeps the legacy guard alias working for compatibility', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const listResult = await guardCommand(['list'], defaultOptions({ outputDir: tempDir }));
+    expect(listResult.success).toBe(true);
+    expect(listResult.message).toContain('Trust policies:');
+  });
+
+  it('rejects invalid policy input types before writing policy state or building guard context', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
 
@@ -621,7 +632,7 @@ describe('advanced retained commands', () => {
       }),
     }));
     expect(invalidApply.success).toBe(false);
-    expect(invalidApply.message).toContain('Guard apply input requires "enabled" to be a boolean.');
+    expect(invalidApply.message).toContain('Policy apply input requires "enabled" to be a boolean.');
 
     const invalidCheck = await guardCommand(['check'], defaultOptions({
       outputDir: tempDir,
@@ -734,7 +745,7 @@ describe('advanced retained commands', () => {
     const statusResult = await statusCommand([], defaultOptions({ outputDir: tempDir, limit: 5 }));
     expect(statusResult.success).toBe(true);
     expect(statusResult.message).toContain('Recent failed traces:');
-    expect(statusResult.message).toContain('guard: Runtime governance blocked step "run-skill"');
+    expect(statusResult.message).toContain('policy: Runtime governance blocked step "run-skill"');
 
     const historyResult = await historyCommand([], defaultOptions({
       outputDir: tempDir,
@@ -743,7 +754,7 @@ describe('advanced retained commands', () => {
     }));
     expect(historyResult.success).toBe(true);
     expect(historyResult.message).toContain('Run History:');
-    expect(historyResult.message).toContain('guard: Runtime governance blocked step "run-skill"');
+    expect(historyResult.message).toContain('policy: Runtime governance blocked step "run-skill"');
 
     const verboseHistory = await historyCommand([], defaultOptions({
       outputDir: tempDir,
@@ -752,7 +763,7 @@ describe('advanced retained commands', () => {
       verbose: true,
     }));
     expect(verboseHistory.success).toBe(true);
-    expect(verboseHistory.message).toContain('Guard:    Runtime governance blocked step "run-skill"');
+    expect(verboseHistory.message).toContain('Policy:   Runtime governance blocked step "run-skill"');
   });
 
   it('surfaces denied imported skills in status views', async () => {
@@ -875,7 +886,7 @@ describe('advanced retained commands', () => {
 
     expect(result.success).toBe(false);
     expect(result.message).toContain('Workflow "workflow-skill-trust" failed');
-    expect(result.message).toContain('Guard: Runtime governance blocked step "run-skill"');
+    expect(result.message).toContain('Policy: Runtime governance blocked step "run-skill"');
     expect(result.message).toContain('Trust state: implicit-local');
     const data = result.data as {
       guard?: {

@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/mcp-server",
-  "version": "14.0.1",
+  "version": "14.0.2",
   "description": "Minimal MCP-compatible workflow tool surface on shared runtime",
   "type": "module",
   "publishConfig": {
@@ -18,9 +18,9 @@
     }
   },
   "dependencies": {
-    "@defai.digital/contracts": "^14.0.1",
-    "@defai.digital/monitoring": "^14.0.1",
-    "@defai.digital/shared-runtime": "^14.0.1",
+    "@defai.digital/contracts": "^14.0.2",
+    "@defai.digital/monitoring": "^14.0.2",
+    "@defai.digital/shared-runtime": "^14.0.2",
     "@modelcontextprotocol/sdk": "^1.26.0"
   },
   "engines": {

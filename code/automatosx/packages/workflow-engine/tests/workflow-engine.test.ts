@@ -3,13 +3,18 @@ import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  buildCheckpointRecord,
   clearWarnedFilesCache,
+  computeWorkflowHash,
   createRealStepExecutor,
   createStepGuardEngine,
   createWorkflowLoader,
   createWorkflowRunner,
   findWorkflowDir,
+  isCheckpointOrdered,
+  validateCheckpoint,
   type DelegateExecutorLike,
+  type StepResult,
 } from '../src/index.js';
 import { safeValidateWorkflow } from '@defai.digital/contracts';
 
@@ -712,5 +717,216 @@ describe('workflow-engine', () => {
       expect(zeroResult.success).toBe(false);
       expect(zeroResult.error?.code).toBe('DELEGATE_MAX_DEPTH_EXCEEDED');
     });
+  });
+
+  it('skips cached steps during resume and replays their outputs into later step context', async () => {
+    const executedStepIds: string[] = [];
+    const runner = createWorkflowRunner({
+      resumeFromStepIndex: 1,
+      priorStepOutputs: {
+        first: { value: 'cached-first' },
+        second: { value: 'cached-second' },
+      },
+      stepExecutor: async (step, context) => {
+        executedStepIds.push(step.stepId);
+        return {
+          stepId: step.stepId,
+          success: true,
+          output: {
+            stepId: step.stepId,
+            receivedInput: context.input,
+            previousOutputs: context.previousResults.map((result) => result.output),
+          },
+          durationMs: 5,
+          retryCount: 0,
+        };
+      },
+    });
+
+    const result = await runner.run({
+      workflowId: 'resume-skip',
+      version: '1.0.0',
+      steps: [
+        { stepId: 'first', type: 'prompt' },
+        { stepId: 'second', type: 'prompt' },
+        { stepId: 'third', type: 'prompt' },
+      ],
+    }, {
+      seed: 'original-input',
+    });
+
+    expect(result.success).toBe(true);
+    expect(executedStepIds).toEqual(['third']);
+    expect(result.stepResults).toHaveLength(3);
+    expect(result.stepResults[0]).toMatchObject({
+      stepId: 'first',
+      success: true,
+      output: {
+        value: 'cached-first',
+      },
+      durationMs: 0,
+    });
+    expect(result.stepResults[1]).toMatchObject({
+      stepId: 'second',
+      success: true,
+      output: {
+        value: 'cached-second',
+      },
+      durationMs: 0,
+    });
+    expect(result.stepResults[2]).toMatchObject({
+      stepId: 'third',
+      success: true,
+      output: {
+        stepId: 'third',
+        receivedInput: {
+          value: 'cached-second',
+        },
+        previousOutputs: [
+          { value: 'cached-first' },
+          { value: 'cached-second' },
+        ],
+      },
+    });
+  });
+
+  it('re-executes noCache steps during resume even when cached outputs exist', async () => {
+    const executedStepIds: string[] = [];
+    const runner = createWorkflowRunner({
+      resumeFromStepIndex: 1,
+      priorStepOutputs: {
+        first: { value: 'cached-first' },
+        second: { value: 'stale-second' },
+      },
+      stepExecutor: async (step, context) => {
+        executedStepIds.push(step.stepId);
+        return {
+          stepId: step.stepId,
+          success: true,
+          output: {
+            stepId: step.stepId,
+            receivedInput: context.input,
+          },
+          durationMs: 7,
+          retryCount: 0,
+        };
+      },
+    });
+
+    const result = await runner.run({
+      workflowId: 'resume-no-cache',
+      version: '1.0.0',
+      steps: [
+        { stepId: 'first', type: 'prompt' },
+        { stepId: 'second', type: 'prompt', noCache: true },
+        { stepId: 'third', type: 'prompt' },
+      ],
+    }, {
+      seed: 'original-input',
+    });
+
+    expect(result.success).toBe(true);
+    expect(executedStepIds).toEqual(['second', 'third']);
+    expect(result.stepResults[0]).toMatchObject({
+      stepId: 'first',
+      output: {
+        value: 'cached-first',
+      },
+      durationMs: 0,
+    });
+    expect(result.stepResults[1]).toMatchObject({
+      stepId: 'second',
+      output: {
+        stepId: 'second',
+        receivedInput: {
+          value: 'cached-first',
+        },
+      },
+      durationMs: 7,
+    });
+    expect(result.stepResults[2]).toMatchObject({
+      stepId: 'third',
+      output: {
+        stepId: 'third',
+        receivedInput: {
+          stepId: 'second',
+          receivedInput: {
+            value: 'cached-first',
+          },
+        },
+      },
+    });
+  });
+});
+
+describe('checkpoint utilities', () => {
+  it('computeWorkflowHash produces deterministic output', () => {
+    const workflow = { workflowId: 'test', version: '1.0.0', steps: [{ stepId: 's1', type: 'prompt' }] };
+    const hash1 = computeWorkflowHash(workflow);
+    const hash2 = computeWorkflowHash(workflow);
+    expect(hash1).toBe(hash2);
+    expect(hash1).toMatch(/^[a-f0-9]{16}$/);
+  });
+
+  it('computeWorkflowHash is key-order independent', () => {
+    const hash1 = computeWorkflowHash({ workflowId: 'test', version: '1.0.0' });
+    const hash2 = computeWorkflowHash({ version: '1.0.0', workflowId: 'test' });
+    expect(hash1).toBe(hash2);
+  });
+
+  it('computeWorkflowHash changes when definition changes', () => {
+    const hash1 = computeWorkflowHash({ workflowId: 'test', version: '1.0.0', steps: [] });
+    const hash2 = computeWorkflowHash({ workflowId: 'test', version: '1.1.0', steps: [] });
+    expect(hash1).not.toBe(hash2);
+  });
+
+  it('isCheckpointOrdered enforces monotonic ordering', () => {
+    expect(isCheckpointOrdered(-1, 0)).toBe(true);
+    expect(isCheckpointOrdered(0, 1)).toBe(true);
+    expect(isCheckpointOrdered(1, 1)).toBe(false);
+    expect(isCheckpointOrdered(2, 1)).toBe(false);
+  });
+
+  it('buildCheckpointRecord captures only successful step outputs', () => {
+    const stepResults: StepResult[] = [
+      { stepId: 'a', success: true, output: 'out-a', durationMs: 10, retryCount: 0 },
+      { stepId: 'b', success: false, durationMs: 5, retryCount: 0, error: { code: 'TEST_FAIL', message: 'fail', retryable: false } },
+      { stepId: 'c', success: true, output: undefined, durationMs: 8, retryCount: 0 },
+    ];
+    const record = buildCheckpointRecord(stepResults, 'abc123', 2, 'c');
+    expect(record.lastCompletedStepIndex).toBe(2);
+    expect(record.lastCompletedStepId).toBe('c');
+    expect(record.workflowHash).toBe('abc123');
+    expect(record.stepOutputs).toEqual({ a: 'out-a', c: null });
+    expect(Date.parse(record.checkpointedAt)).not.toBeNaN();
+  });
+
+  it('validateCheckpoint returns null for a valid checkpoint', () => {
+    const stepResults: StepResult[] = [
+      { stepId: 'a', success: true, output: 'out-a', durationMs: 10, retryCount: 0 },
+    ];
+    const record = buildCheckpointRecord(stepResults, 'hash1', 0, 'a');
+    expect(validateCheckpoint(record, stepResults)).toBeNull();
+  });
+
+  it('validateCheckpoint rejects checkpoint with missing stepOutput', () => {
+    const stepResults: StepResult[] = [
+      { stepId: 'a', success: true, output: 'out-a', durationMs: 10, retryCount: 0 },
+      { stepId: 'b', success: true, output: 'out-b', durationMs: 5, retryCount: 0 },
+    ];
+    const record = buildCheckpointRecord(stepResults, 'hash1', 1, 'b');
+    delete (record.stepOutputs as Record<string, unknown>)['a'];
+    const error = validateCheckpoint(record, stepResults);
+    expect(error).toContain('missing from stepOutputs');
+  });
+
+  it('validateCheckpoint rejects checkpoint with non-existent lastCompletedStepId', () => {
+    const stepResults: StepResult[] = [
+      { stepId: 'a', success: true, output: 'out-a', durationMs: 10, retryCount: 0 },
+    ];
+    const record = buildCheckpointRecord(stepResults, 'hash1', 0, 'a');
+    record.lastCompletedStepId = 'nonexistent';
+    const error = validateCheckpoint(record, stepResults);
+    expect(error).toContain('not found as a successful step');
   });
 });

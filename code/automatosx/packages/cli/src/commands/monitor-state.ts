@@ -1,11 +1,10 @@
-import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { listStableAgentEntries } from '../agent-catalog.js';
 import {
   buildCliGovernanceSnapshot,
 } from '../utils/runtime-guard-summary.js';
-import { parseJsonObjectString } from '../utils/validation.js';
+import { readJsonObjectFile } from '../json-object-file.js';
 import { loadMonitorWorkflows } from './monitor-workflows.js';
 import type {
   MonitorApiState,
@@ -18,24 +17,6 @@ const DEFAULT_PORT_MIN = 3000;
 const DEFAULT_PORT_MAX = 3999;
 const PROVIDER_SNAPSHOT_TTL_MS = 10_000;
 
-const environmentProviderSchema = z.object({
-  providerId: z.string(),
-  cli: z.string().optional(),
-  installed: z.boolean().optional(),
-});
-const environmentSnapshotSchema = z.object({
-  generatedAt: z.string().optional(),
-  providers: z.array(environmentProviderSchema).optional(),
-});
-const providerSummaryEntrySchema = z.object({
-  providerId: z.string().optional(),
-  enabled: z.boolean().optional(),
-  installed: z.boolean().optional(),
-});
-const providerSummarySchema = z.object({
-  generatedBy: z.string().optional(),
-  providers: z.array(providerSummaryEntrySchema).optional(),
-});
 const monitorConfigSchema = z.object({
   monitor: z.object({
     portMin: z.number().int().min(1).max(65535).optional(),
@@ -58,19 +39,30 @@ export function resolveMonitorConfig(config: unknown): MonitorConfig {
 
 export async function readCachedProviderSnapshot(basePath: string): Promise<MonitorProviderSnapshot> {
   const [environmentSnapshot, providerSummary] = await Promise.all([
-    readJsonFile(join(basePath, '.automatosx', 'environment.json'), environmentSnapshotSchema),
-    readJsonFile(join(basePath, '.automatosx', 'providers.json'), providerSummarySchema),
+    readJsonObjectFile(join(basePath, '.automatosx', 'environment.json')),
+    readJsonObjectFile(join(basePath, '.automatosx', 'providers.json')),
   ]);
 
-  const detectedProviders = environmentSnapshot?.providers
-    ?.filter((provider) => provider.installed === true)
-    .map((provider) => provider.providerId) ?? [];
-  const enabledProviders = providerSummary?.providers
-    ?.filter((provider) => provider.enabled === true && typeof provider.providerId === 'string')
-    .map((provider) => provider.providerId as string) ?? [];
-  const installedButDisabledProviders = providerSummary?.providers
-    ?.filter((provider) => provider.installed === true && provider.enabled !== true && typeof provider.providerId === 'string')
-    .map((provider) => provider.providerId as string) ?? [];
+  const generatedAt = asOptionalString(environmentSnapshot?.generatedAt);
+  const environmentProviders = asRecordArray(environmentSnapshot?.providers);
+  const summaryProviders = asRecordArray(providerSummary?.providers);
+
+  const detectedProviders = environmentProviders
+    .filter((provider) => asOptionalString(provider.providerId) !== undefined && provider.installed === true)
+    .map((provider) => asOptionalString(provider.providerId)!)
+    .filter(uniqueStrings);
+  const enabledProviders = summaryProviders
+    .filter((provider) => asOptionalString(provider.providerId) !== undefined && provider.enabled === true)
+    .map((provider) => asOptionalString(provider.providerId)!)
+    .filter(uniqueStrings);
+  const installedButDisabledProviders = summaryProviders
+    .filter((provider) => asOptionalString(provider.providerId) !== undefined && provider.installed === true && provider.enabled !== true)
+    .map((provider) => asOptionalString(provider.providerId)!)
+    .filter(uniqueStrings);
+  const configuredButUnavailableProviders = summaryProviders
+    .filter((provider) => asOptionalString(provider.providerId) !== undefined && provider.enabled === true && provider.installed !== true)
+    .map((provider) => asOptionalString(provider.providerId)!)
+    .filter(uniqueStrings);
 
   if (
     environmentSnapshot === undefined
@@ -83,15 +75,17 @@ export async function readCachedProviderSnapshot(basePath: string): Promise<Moni
       detectedProviders: [],
       enabledProviders: [],
       installedButDisabledProviders: [],
+      configuredButUnavailableProviders: [],
     };
   }
 
   return {
     source: 'cached',
-    generatedAt: environmentSnapshot?.generatedAt,
+    generatedAt,
     detectedProviders,
     enabledProviders,
     installedButDisabledProviders,
+    configuredButUnavailableProviders,
   };
 }
 
@@ -159,16 +153,16 @@ export async function buildMonitorState(
   };
 }
 
-async function readJsonFile<T>(path: string, schema: z.ZodType<T>): Promise<T | undefined> {
-  try {
-    const raw = await readFile(path, 'utf8');
-    const parsed = parseJsonObjectString(raw);
-    if (parsed.error !== undefined) {
-      return undefined;
-    }
-    const result = schema.safeParse(parsed.value);
-    return result.success ? result.data : undefined;
-  } catch {
-    return undefined;
-  }
+function asRecordArray(value: unknown): Array<Record<string, unknown>> {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is Record<string, unknown> => typeof entry === 'object' && entry !== null)
+    : [];
+}
+
+function asOptionalString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function uniqueStrings(value: string, index: number, array: string[]): boolean {
+  return array.indexOf(value) === index;
 }

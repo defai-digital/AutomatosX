@@ -50,7 +50,7 @@ export function extractRuntimeGuardSummary(metadata: unknown): RuntimeGuardSumma
 
 export function formatRuntimeGuardSummaryLine(
   metadata: unknown,
-  prefix = 'Guard:',
+  prefix = 'Policy:',
   maxLength = 120,
 ): string | undefined {
   const guard = extractRuntimeGuardSummary(metadata);
@@ -64,7 +64,7 @@ export function formatRuntimeGuardSummaryLine(
 
 export function formatRuntimeGuardSummaryDetails(
   guard: RuntimeGuardSummary | undefined,
-  prefix = 'Guard',
+  prefix = 'Policy',
 ): string[] {
   if (guard === undefined) {
     return [];

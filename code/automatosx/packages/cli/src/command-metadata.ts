@@ -8,9 +8,18 @@ export interface CommandMetadata {
   usage: string[];
   category: 'root' | 'workflow' | 'retained' | 'advanced';
   stable: boolean;
+  productTier: 'stable' | 'advanced' | 'experimental';
 }
 
-const STATIC_COMMAND_METADATA_BEFORE_WORKFLOWS: readonly CommandMetadata[] = [
+interface CommandMetadataSeed {
+  command: string;
+  description: string;
+  usage: string[];
+  category: 'root' | 'workflow' | 'retained' | 'advanced';
+  stable: boolean;
+}
+
+const STATIC_COMMAND_METADATA_BEFORE_WORKFLOWS: readonly CommandMetadataSeed[] = [
   {
     command: 'help',
     description: 'Show root help or command-specific help.',
@@ -80,7 +89,7 @@ const STATIC_COMMAND_METADATA_BEFORE_WORKFLOWS: readonly CommandMetadata[] = [
   },
 ];
 
-export const WORKFLOW_COMMAND_METADATA: readonly (CommandMetadata & { category: 'workflow' })[] =
+const WORKFLOW_COMMAND_METADATA_SEED: readonly (CommandMetadataSeed & { category: 'workflow' })[] =
   listSharedWorkflowCatalog().map((entry) => ({
     command: entry.commandId,
     description: entry.description,
@@ -89,7 +98,7 @@ export const WORKFLOW_COMMAND_METADATA: readonly (CommandMetadata & { category: 
     stable: true,
   }));
 
-export const WORKFLOW_PRIMARY_USAGES: readonly string[] = WORKFLOW_COMMAND_METADATA
+export const WORKFLOW_PRIMARY_USAGES: readonly string[] = WORKFLOW_COMMAND_METADATA_SEED
   .map((entry) => entry.usage[0])
   .filter((value): value is string => typeof value === 'string' && value.length > 0);
 
@@ -113,7 +122,39 @@ export const RETAINED_HIGH_VALUE_COMMANDS: readonly string[] = [
   'ax discuss "<topic>"',
 ];
 
-const STATIC_COMMAND_METADATA_AFTER_WORKFLOWS: readonly CommandMetadata[] = [
+export const STABLE_SUPPORT_COMMANDS: readonly string[] = [
+  'ax doctor',
+  'ax status',
+  'ax agent list',
+  'ax review analyze <paths...>',
+  'ax policy list',
+  'ax config show',
+  'ax resume <trace-id>',
+  'ax list',
+  'ax trace [trace-id]',
+  'ax trace analyze <trace-id>',
+  'ax trace by-session <session-id>',
+  'ax discuss "<topic>"',
+];
+
+export const ADVANCED_SUPPORT_COMMANDS: readonly string[] = [
+  'ax cleanup',
+  'ax history',
+  'ax call "summarize this diff"',
+  'ax call --autonomous --intent analysis "assess release risk"',
+  'ax iterate run <workflow-id>',
+  'ax ability list',
+  'ax feedback overview',
+  'ax bridge list',
+  'ax skill list',
+  'ax monitor',
+  'ax mcp tools',
+  'ax mcp serve',
+  'ax session list',
+  'ax governance',
+];
+
+const STATIC_COMMAND_METADATA_AFTER_WORKFLOWS: readonly CommandMetadataSeed[] = [
   {
     command: 'setup',
     description: 'Bootstrap local AutomatosX workspace, AGENTS.md, MCP config, and provider integrations.',
@@ -144,7 +185,7 @@ const STATIC_COMMAND_METADATA_AFTER_WORKFLOWS: readonly CommandMetadata[] = [
   },
   {
     command: 'bridge',
-    description: 'Install, inspect, and execute local AX-BRIDGE definitions with shared-runtime governance.',
+    description: 'Install, inspect, and execute local AX-BRIDGE definitions as an advanced local-first extension surface.',
     usage: [
       'ax bridge list',
       'ax bridge install <path> [--require-trusted]',
@@ -157,7 +198,7 @@ const STATIC_COMMAND_METADATA_AFTER_WORKFLOWS: readonly CommandMetadata[] = [
   },
   {
     command: 'skill',
-    description: 'Import and inspect local AX-SKILL definitions, including OpenClaw-style SKILL.md files.',
+    description: 'Import and inspect local AX-SKILL definitions as an advanced local-first companion extension surface.',
     usage: [
       'ax skill list',
       'ax skill import <path> [--require-trusted]',
@@ -255,7 +296,7 @@ const STATIC_COMMAND_METADATA_AFTER_WORKFLOWS: readonly CommandMetadata[] = [
   },
   {
     command: 'monitor',
-    description: 'Launch a local HTTP dashboard showing active sessions, traces, and agents.',
+    description: 'Launch an advanced local HTTP operator dashboard for sessions, traces, and agents.',
     usage: [
       'ax monitor',
       'ax monitor --port 8080',
@@ -266,11 +307,11 @@ const STATIC_COMMAND_METADATA_AFTER_WORKFLOWS: readonly CommandMetadata[] = [
   },
   {
     command: 'scaffold',
-    description: 'Generate contract-first components: Zod schemas, domain packages, guard policies.',
+    description: 'Generate contract-first components: Zod schemas, domain packages, and trust policies.',
     usage: [
       'ax scaffold contract <name>',
       'ax scaffold domain <name> --scope @myorg',
-      'ax scaffold guard <policy-id>',
+      'ax scaffold policy <policy-id>',
       'ax scaffold contract <name> --dry-run',
     ],
     category: 'advanced',
@@ -302,13 +343,13 @@ const STATIC_COMMAND_METADATA_AFTER_WORKFLOWS: readonly CommandMetadata[] = [
     stable: true,
   },
   {
-    command: 'guard',
-    description: 'List, apply, and evaluate workflow guard policies.',
+    command: 'policy',
+    description: 'List, apply, and evaluate trust policies for workflow execution.',
     usage: [
-      'ax guard list',
-      'ax guard apply <policy-id>',
-      'ax guard apply --input <json-object>',
-      'ax guard check --input <json-object>',
+      'ax policy list',
+      'ax policy apply <policy-id>',
+      'ax policy apply --input <json-object>',
+      'ax policy check --input <json-object>',
     ],
     category: 'advanced',
     stable: true,
@@ -426,14 +467,54 @@ const STATIC_COMMAND_METADATA_AFTER_WORKFLOWS: readonly CommandMetadata[] = [
   },
 ];
 
+const STABLE_PRODUCT_COMMANDS = new Set([
+  'setup',
+  'ship',
+  'architect',
+  'audit',
+  'qa',
+  'release',
+  'list',
+  'run',
+  'resume',
+  'trace',
+  'agent',
+  'discuss',
+  'review',
+  'policy',
+  'doctor',
+  'status',
+  'config',
+]);
+
+const EXPERIMENTAL_PRODUCT_COMMANDS = new Set<string>([]);
+
+function withProductTier(entry: CommandMetadataSeed): CommandMetadata {
+  const productTier = EXPERIMENTAL_PRODUCT_COMMANDS.has(entry.command)
+    ? 'experimental'
+    : STABLE_PRODUCT_COMMANDS.has(entry.command) || entry.category === 'workflow'
+      ? 'stable'
+      : 'advanced';
+  return {
+    ...entry,
+    productTier,
+  };
+}
+
+export const WORKFLOW_COMMAND_METADATA: readonly (CommandMetadata & { category: 'workflow' })[] =
+  WORKFLOW_COMMAND_METADATA_SEED.map((entry) => withProductTier(entry) as CommandMetadata & { category: 'workflow' });
+
 export const COMMAND_METADATA: readonly CommandMetadata[] = [
   ...STATIC_COMMAND_METADATA_BEFORE_WORKFLOWS,
-  ...WORKFLOW_COMMAND_METADATA,
+  ...WORKFLOW_COMMAND_METADATA_SEED,
   ...STATIC_COMMAND_METADATA_AFTER_WORKFLOWS,
-];
+].map(withProductTier);
 
 export const CLI_COMMAND_NAMES = COMMAND_METADATA.map((entry) => entry.command);
 export const WORKFLOW_COMMAND_NAMES = WORKFLOW_COMMAND_METADATA.map((entry) => entry.command);
+export const COMMAND_ALIASES = {
+  guard: 'policy',
+} as const;
 
 const COMMAND_METADATA_BY_NAME = new Map(
   COMMAND_METADATA.map((entry) => [entry.command, entry] as const),
@@ -443,25 +524,39 @@ const WORKFLOW_COMMAND_METADATA_BY_NAME = new Map(
 );
 
 export const RETAINED_COMMANDS = COMMAND_METADATA
-  .filter((entry) => entry.category === 'retained')
+  .filter((entry) => entry.productTier === 'stable' && entry.category !== 'workflow' && entry.category !== 'root')
   .map((entry) => ({
     command: entry.command,
     description: entry.description,
+    productTier: entry.productTier,
   }));
 
 export const ADVANCED_COMMANDS = COMMAND_METADATA
-  .filter((entry) => entry.category === 'advanced')
+  .filter((entry) => entry.productTier === 'advanced')
   .map((entry) => ({
     command: entry.command,
     description: entry.description,
+    productTier: entry.productTier,
   }));
 
+export const EXPERIMENTAL_COMMANDS = COMMAND_METADATA
+  .filter((entry) => entry.productTier === 'experimental')
+  .map((entry) => ({
+    command: entry.command,
+    description: entry.description,
+    productTier: entry.productTier,
+  }));
+
+export function resolveCommandAlias(command: string): string {
+  return COMMAND_ALIASES[command as keyof typeof COMMAND_ALIASES] ?? command;
+}
+
 export function getCommandMetadata(command: string): CommandMetadata | undefined {
-  return COMMAND_METADATA_BY_NAME.get(command);
+  return COMMAND_METADATA_BY_NAME.get(resolveCommandAlias(command));
 }
 
 export function hasCommandMetadata(command: string): boolean {
-  return COMMAND_METADATA_BY_NAME.has(command);
+  return COMMAND_METADATA_BY_NAME.has(resolveCommandAlias(command));
 }
 
 export function getWorkflowCommandMetadata(command: string): (CommandMetadata & { category: 'workflow' }) | undefined {

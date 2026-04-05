@@ -4,13 +4,14 @@ export const MONITOR_DASHBOARD_SCRIPT_DETAIL_TRACE = `
       const steps = Array.isArray(trace.stepResults) ? trace.stepResults : [];
       const totalMs = steps.reduce(function(sum, s) { return sum + (s.durationMs || 0); }, 0);
       const summary = traceSummary(trace);
+      const providers = extractTraceProviders(trace);
 
       const chipsHtml = badge(trace.status)
         + '<span class="chip">⏱ <strong>' + esc(dur) + '</strong></span>'
         + '<span class="chip">Surface: <strong>' + esc(trace.surface || 'cli') + '</strong></span>'
         + '<span class="chip">Started: <strong>' + esc(timeAgo(trace.startedAt)) + '</strong></span>'
         + (trace.completedAt ? '<span class="chip">Ended: <strong>' + esc(timeAgo(trace.completedAt)) + '</strong></span>' : '')
-        + (trace.metadata && trace.metadata.provider ? '<span class="chip">Provider: <strong>' + esc(String(trace.metadata.provider)) + '</strong></span>' : '')
+        + (providers.length > 0 ? '<span class="chip">' + esc(providers.length === 1 ? 'Provider' : 'Providers') + ': <strong>' + esc(providers.join(', ')) + '</strong></span>' : '')
         + (trace.metadata && trace.metadata.sessionId ? '<span class="chip">Session: <strong class="mono">' + esc(String(trace.metadata.sessionId).slice(0,12)) + '…</strong></span>' : '');
 
       let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
@@ -22,12 +23,10 @@ export const MONITOR_DASHBOARD_SCRIPT_DETAIL_TRACE = `
         + renderDetailHeader(traceDisplayName(trace), trace.traceId, chipsHtml);
 
       if (trace.error && trace.error.message) {
-        html += '<div class="error-block">'
-          + '<h3>Error</h3>'
-          + '<div class="error-message">' + esc(trace.error.message) + '</div>'
-          + (trace.error.failedStepId ? '<div class="error-detail">Failed step: ' + esc(trace.error.failedStepId) + '</div>' : '')
-          + (trace.error.code ? '<div class="error-detail">Code: ' + esc(trace.error.code) + '</div>' : '')
-          + '</div>';
+        html += renderErrorCallout('Error', trace.error.message, [
+          trace.error.failedStepId ? 'Failed step: ' + trace.error.failedStepId : '',
+          trace.error.code ? 'Code: ' + trace.error.code : '',
+        ]);
       }
 
       if (trace.metadata && trace.metadata.guardSummary) {
@@ -38,39 +37,43 @@ export const MONITOR_DASHBOARD_SCRIPT_DETAIL_TRACE = `
         const requiredTrustStates = Array.isArray(trace.metadata.guardRequiredTrustStates)
           ? trace.metadata.guardRequiredTrustStates.map(function(entry) { return String(entry); })
           : [];
-        html += '<div class="error-block">'
-          + '<h3>Guard</h3>'
-          + '<div class="error-message">' + esc(guardSummary) + '</div>'
-          + (trace.metadata.guardToolName ? '<div class="error-detail">Tool: ' + esc(String(trace.metadata.guardToolName)) + '</div>' : '')
-          + (trace.metadata.guardTrustState ? '<div class="error-detail">Trust state: ' + esc(String(trace.metadata.guardTrustState)) + '</div>' : '')
-          + (requiredTrustStates.length > 0 ? '<div class="error-detail">Required trust states: ' + esc(requiredTrustStates.join(', ')) + '</div>' : '')
-          + (guardFailedGates.length > 0 ? '<div class="error-detail">Failed gates: ' + esc(guardFailedGates.join(', ')) + '</div>' : '')
-          + '</div>';
+        html += renderErrorCallout('Policy', guardSummary, [
+          trace.metadata.guardToolName ? 'Tool: ' + String(trace.metadata.guardToolName) : '',
+          trace.metadata.guardTrustState ? 'Trust state: ' + String(trace.metadata.guardTrustState) : '',
+          requiredTrustStates.length > 0 ? 'Required trust states: ' + requiredTrustStates.join(', ') : '',
+          guardFailedGates.length > 0 ? 'Failed gates: ' + guardFailedGates.join(', ') : '',
+        ]);
       }
 
-      if (summary) {
-        html += renderSection('Summary', renderEscapedDetailBlock(summary));
-      }
+      html += renderSummarySection(summary);
 
       if (steps.length > 0) {
-        const hasTimestamps = steps.some(function(s) { return s.startedAt; });
+        const hasTimestamps = steps.some(function(s) {
+          return parseIsoTimestamp(s.startedAt) !== null || parseIsoTimestamp(s.completedAt) !== null;
+        });
         html += '<div class="section"><h2>Steps <span class="section-count">' + steps.length + '</span></h2>';
 
         if (hasTimestamps) {
-          const traceStart = trace.startedAt ? new Date(trace.startedAt).getTime() : Date.now();
-          const traceEnd = trace.completedAt ? new Date(trace.completedAt).getTime() : Date.now();
-          const totalSpan = Math.max(Number.isFinite(traceEnd - traceStart) ? traceEnd - traceStart : 1, 1);
+          const stepTimes = steps.flatMap(function(step) {
+            return [parseIsoTimestamp(step.startedAt), parseIsoTimestamp(step.completedAt)].filter(function(value) {
+              return value !== null;
+            });
+          });
+          const traceStart = parseIsoTimestamp(trace.startedAt) || stepTimes[0] || Date.now();
+          const traceEnd = parseIsoTimestamp(trace.completedAt) || stepTimes[stepTimes.length - 1] || traceStart;
+          const totalSpan = Math.max(traceEnd - traceStart, 1);
 
           const axisLabels = ['0', formatGanttMs(totalSpan * 0.25), formatGanttMs(totalSpan * 0.5), formatGanttMs(totalSpan * 0.75), formatGanttMs(totalSpan)];
           html += '<div class="gantt-axis">' + axisLabels.map(function(l) { return '<span>' + esc(l) + '</span>'; }).join('') + '</div>';
           html += '<div class="gantt-wrap">';
 
           for (const step of steps) {
-            const stepStart = step.startedAt ? new Date(step.startedAt).getTime() : traceStart;
-            const stepEnd = step.completedAt ? new Date(step.completedAt).getTime() : (stepStart + (step.durationMs || 0));
+            const stepStart = parseIsoTimestamp(step.startedAt) || traceStart;
+            const stepEnd = parseIsoTimestamp(step.completedAt) || (stepStart + (step.durationMs || 0));
             const offsetPct = Math.max(0, Math.min(99, ((stepStart - traceStart) / totalSpan) * 100));
             const widthPct = Math.max(0.5, Math.min(100 - offsetPct, ((stepEnd - stepStart) / totalSpan) * 100));
-            const barClass = !step.completedAt ? 'running' : step.success ? 'success' : 'fail';
+            const hasCompletedAt = parseIsoTimestamp(step.completedAt) !== null;
+            const barClass = !hasCompletedAt && step.success !== false ? 'running' : step.success ? 'success' : 'fail';
             const sdur = step.durationMs != null
               ? (step.durationMs < 1000 ? step.durationMs + 'ms' : (step.durationMs / 1000).toFixed(1) + 's')
               : '—';
@@ -118,14 +121,12 @@ export const MONITOR_DASHBOARD_SCRIPT_DETAIL_TRACE = `
       }
 
       if (trace.input) {
-        html += '<div class="section">' + collapsible('trace-input', 'Input', JSON.stringify(trace.input, null, 2)) + '</div>';
+        html += renderJsonCollapsibleSection('trace-input', 'Input', trace.input);
       }
       if (trace.output) {
-        html += '<div class="section">' + collapsible('trace-output', 'Output', JSON.stringify(trace.output, null, 2)) + '</div>';
+        html += renderJsonCollapsibleSection('trace-output', 'Output', trace.output);
       }
-      if (trace.metadata && Object.keys(trace.metadata).length > 0) {
-        html += '<div class="section">' + collapsible('trace-meta', 'Metadata', JSON.stringify(trace.metadata, null, 2)) + '</div>';
-      }
+      html += renderMetadataSection('trace-meta', trace.metadata);
 
       return html;
     }

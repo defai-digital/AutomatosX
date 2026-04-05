@@ -17,11 +17,15 @@ export function analyzeTraceRecord(trace: TraceRecord): RuntimeTraceAnalysis {
     .sort((left, right) => right.durationMs - left.durationMs)[0];
   const durationMs = resolveTraceDuration(trace);
   const guard = extractRuntimeTraceGuardSummary(trace.metadata);
+  const checkpoint = trace.checkpoint;
+  const hasCheckpoint = checkpoint !== undefined && checkpoint.lastCompletedStepIndex >= 0;
+  const resumable = hasCheckpoint && trace.status === 'failed';
   const findings = buildTraceFindings(trace, {
     totalSteps,
     failedSteps,
     retryCount,
     guard,
+    resumable,
   });
 
   return {
@@ -43,6 +47,9 @@ export function analyzeTraceRecord(trace: TraceRecord): RuntimeTraceAnalysis {
     },
     guard,
     error: trace.error,
+    resumable: resumable || undefined,
+    checkpointStepIndex: hasCheckpoint ? checkpoint.lastCompletedStepIndex : undefined,
+    checkpointWorkflowHash: hasCheckpoint ? checkpoint.workflowHash : undefined,
     findings,
   };
 }
@@ -54,6 +61,7 @@ function buildTraceFindings(
     failedSteps: number;
     retryCount: number;
     guard?: RuntimeTraceGuardSummary;
+    resumable?: boolean;
   },
 ): RuntimeTraceAnalysisFinding[] {
   const findings: RuntimeTraceAnalysisFinding[] = [];
@@ -63,6 +71,14 @@ function buildTraceFindings(
       level: 'error',
       code: 'TRACE_FAILED',
       message: trace.error?.message ?? 'Trace completed with a failure status.',
+    });
+  }
+
+  if (summary.resumable) {
+    findings.push({
+      level: 'info',
+      code: 'CHECKPOINT_RESUMABLE',
+      message: `This trace can be resumed with: ax resume ${trace.traceId}`,
     });
   }
 

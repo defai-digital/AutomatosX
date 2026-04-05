@@ -285,6 +285,79 @@ describe('trace store', () => {
     ]);
   });
 
+  it('round-trips checkpoint data needed for workflow resume', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const store = createTraceStore({ basePath: tempDir });
+    await store.upsertTrace({
+      traceId: 'resume-source',
+      workflowId: 'ship',
+      surface: 'cli',
+      status: 'failed',
+      startedAt: '2026-03-26T00:00:00.000Z',
+      completedAt: '2026-03-26T00:01:00.000Z',
+      stepResults: [
+        {
+          stepId: 'plan',
+          success: true,
+          durationMs: 10,
+          retryCount: 0,
+          completedAt: '2026-03-26T00:00:10.000Z',
+        },
+        {
+          stepId: 'review',
+          success: true,
+          durationMs: 15,
+          retryCount: 0,
+          completedAt: '2026-03-26T00:00:25.000Z',
+        },
+        {
+          stepId: 'ship',
+          success: false,
+          durationMs: 5,
+          retryCount: 0,
+          error: 'provider timeout',
+          completedAt: '2026-03-26T00:00:30.000Z',
+        },
+      ],
+      checkpoint: {
+        lastCompletedStepIndex: 1,
+        lastCompletedStepId: 'review',
+        checkpointedAt: '2026-03-26T00:00:25.000Z',
+        workflowHash: 'abc123resumehash',
+        stepOutputs: {
+          plan: {
+            summary: 'cached plan',
+          },
+          review: {
+            summary: 'cached review',
+          },
+        },
+      },
+    });
+
+    await expect(store.getTrace('resume-source')).resolves.toMatchObject({
+      traceId: 'resume-source',
+      workflowId: 'ship',
+      status: 'failed',
+      checkpoint: {
+        lastCompletedStepIndex: 1,
+        lastCompletedStepId: 'review',
+        checkpointedAt: '2026-03-26T00:00:25.000Z',
+        workflowHash: 'abc123resumehash',
+        stepOutputs: {
+          plan: {
+            summary: 'cached plan',
+          },
+          review: {
+            summary: 'cached review',
+          },
+        },
+      },
+    });
+  });
+
   it('lists traces by status without scanning unrelated records in caller code', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);

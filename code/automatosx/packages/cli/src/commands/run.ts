@@ -107,7 +107,7 @@ export async function runCommand(args: string[], options: CLIOptions): Promise<C
       return success(`Workflow "${workflowId}" completed successfully.${stepSummary}`, data);
     }
 
-    const guardSummary = execution.guard?.summary ? `\n\nGuard: ${execution.guard.summary}` : '';
+    const guardSummary = execution.guard?.summary ? `\n\nPolicy: ${execution.guard.summary}` : '';
     return failure(`Workflow "${workflowId}" failed: ${execution.error?.message ?? 'Unknown error'}.${stepSummary}${guardSummary}`, data);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

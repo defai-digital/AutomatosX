@@ -1,11 +1,11 @@
 import { constants } from 'node:fs';
-import { access, readFile } from 'node:fs/promises';
+import { access } from 'node:fs/promises';
 import { join } from 'node:path';
-import { createMcpServerSurface } from '@defai.digital/mcp-server';
+import { createMcpServerSurface, STABLE_V15_MCP_TOOL_FAMILIES } from '@defai.digital/mcp-server';
 import type { CLIOptions, CommandResult } from '../types.js';
 import { listDefaultAgentCatalog } from '../agent-catalog.js';
+import { readJsonObjectFile } from '../json-object-file.js';
 import { createRuntime, failure, resolveCliBasePath, success, usageError } from '../utils/formatters.js';
-import { PROVIDER_CLIENT_IDS, PROVIDER_CLIENT_COMMANDS, type ProviderClientId } from '../utils/provider-detection.js';
 import {
   buildCliGovernanceSnapshot,
   createEmptyCliGovernanceSnapshot,
@@ -14,180 +14,18 @@ import {
   type DeniedInstalledBridgeAggregate,
   type RuntimeGovernanceAggregate,
 } from '../utils/runtime-guard-summary.js';
-import { parseJsonObjectString } from '../utils/validation.js';
 import { isBundledWorkflowDir, resolveEffectiveWorkflowDir } from '../workflow-paths.js';
+import {
+  buildDoctorCommandData,
+  type DoctorCheck,
+  type DoctorCommandData,
+  getProviderChecks,
+  renderDoctorReport,
+  summarizeDoctorChecks,
+} from './doctor-support.js';
 
-// ============================================================================
-// Types
-// ============================================================================
-
-type DoctorStatus = 'ok' | 'warn' | 'fail';
-
-interface DoctorCheck {
-  id: string;
-  status: DoctorStatus;
-  message: string;
-}
-
-interface DoctorSummary {
-  ok: number;
-  warn: number;
-  fail: number;
-}
-
-export interface DoctorCommandData {
-  basePath: string;
-  status: 'healthy' | 'warning' | 'unhealthy';
-  checks: DoctorCheck[];
-  summary: DoctorSummary;
-  governance: RuntimeGovernanceAggregate;
-  deniedInstalledBridges: DeniedInstalledBridgeAggregate;
-}
-
-export function buildDoctorCommandData(input: {
-  basePath: string;
-  status: 'healthy' | 'warning' | 'unhealthy';
-  checks: Array<{ id: string; status: 'ok' | 'warn' | 'fail'; message: string }>;
-  summary: { ok: number; warn: number; fail: number };
-  governance: RuntimeGovernanceAggregate;
-  deniedInstalledBridges: DeniedInstalledBridgeAggregate;
-}): DoctorCommandData {
-  return {
-    basePath: input.basePath,
-    status: input.status,
-    checks: input.checks,
-    summary: input.summary,
-    governance: input.governance,
-    deniedInstalledBridges: input.deniedInstalledBridges,
-  };
-}
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-const REQUIRED_MCP_TOOLS = ['workflow_run', 'trace_list', 'agent_list'];
-const BOLD = '\x1b[1m';
-const RESET = '\x1b[0m';
-const GREEN = '\x1b[32m';
-const RED = '\x1b[31m';
-const YELLOW = '\x1b[33m';
-const CYAN = '\x1b[36m';
-const DIM = '\x1b[2m';
-
-const PROVIDER_META: Record<ProviderClientId, { name: string; installHint: string }> = {
-  claude: { name: 'Claude', installHint: 'npm install -g @anthropic-ai/claude-code' },
-  gemini: { name: 'Gemini', installHint: 'npm install -g @google/gemini-cli' },
-  codex: { name: 'Codex', installHint: 'npm install -g @openai/codex' },
-  grok: { name: 'Grok', installHint: 'npm install -g ax-grok' },
-  cursor: { name: 'Cursor', installHint: 'Install from https://cursor.com' },
-};
-
-// ============================================================================
-// Provider CLI helpers
-// ============================================================================
-
-interface CachedProviderStatus {
-  providerId?: string;
-  cli?: string;
-  installed?: boolean;
-}
-
-function createProviderStatusMap(
-  providers: CachedProviderStatus[],
-): Record<ProviderClientId, CachedProviderStatus> {
-  const statusMap = {} as Record<ProviderClientId, CachedProviderStatus>;
-
-  for (const providerId of PROVIDER_CLIENT_IDS) {
-    statusMap[providerId] = {
-      providerId,
-      cli: PROVIDER_CLIENT_COMMANDS[providerId],
-      installed: false,
-    };
-  }
-
-  for (const provider of providers) {
-    const providerId = typeof provider.providerId === 'string' ? provider.providerId : undefined;
-    if (providerId === undefined || !PROVIDER_CLIENT_IDS.includes(providerId as ProviderClientId)) {
-      continue;
-    }
-    statusMap[providerId as ProviderClientId] = {
-      providerId,
-      cli: typeof provider.cli === 'string' ? provider.cli : PROVIDER_CLIENT_COMMANDS[providerId as ProviderClientId],
-      installed: provider.installed === true,
-    };
-  }
-
-  return statusMap;
-}
-
-function getOverrideAvailableClients(): Set<ProviderClientId> | undefined {
-  const override = process.env.AUTOMATOSX_AVAILABLE_CLIENTS ?? process.env.AUTOMATOSX_INIT_AVAILABLE_CLIENTS;
-  if (typeof override !== 'string' || override.trim().length === 0) return undefined;
-  const ids = new Set(
-    override.split(',').map((s) => s.trim()).filter((s): s is ProviderClientId => PROVIDER_CLIENT_IDS.includes(s as ProviderClientId)),
-  );
-  return ids;
-}
-
-function createOverrideProviderChecks(overrideClients: Set<ProviderClientId>): DoctorCheck[] {
-  return PROVIDER_CLIENT_IDS.map((id) => {
-    const command = PROVIDER_CLIENT_COMMANDS[id];
-    const meta = PROVIDER_META[id];
-    return {
-      id: `provider-${id}`,
-      status: overrideClients.has(id) ? 'ok' : 'warn',
-      message: overrideClients.has(id)
-        ? `${meta.name} CLI (${command}): detected`
-        : `${meta.name} CLI (${command}): not detected`,
-    };
-  });
-}
-
-function createCachedProviderChecks(providerStatuses: Record<ProviderClientId, CachedProviderStatus>): DoctorCheck[] {
-  return PROVIDER_CLIENT_IDS.map((id) => {
-    const meta = PROVIDER_META[id];
-    const provider = providerStatuses[id];
-    const command = provider.cli ?? PROVIDER_CLIENT_COMMANDS[id];
-
-    return {
-      id: `provider-${id}`,
-      status: provider.installed === true ? 'ok' : 'warn',
-      message: provider.installed === true
-        ? `${meta.name} CLI (${command}): available (cached environment baseline).`
-        : `${meta.name} CLI (${command}): not installed in cached environment baseline — ${meta.installHint}`,
-    };
-  });
-}
-
-function createMissingProviderBaselineCheck(environmentPath: string): DoctorCheck {
-  return {
-    id: 'provider-baseline',
-    status: 'warn',
-    message: `Provider environment baseline is missing or invalid (${environmentPath}). Run "ax setup".`,
-  };
-}
-
-async function getProviderChecks(environmentPath: string): Promise<DoctorCheck[]> {
-  const overrideClients = getOverrideAvailableClients();
-  if (overrideClients !== undefined) {
-    return createOverrideProviderChecks(overrideClients);
-  }
-
-  const environment = await readJsonFile(environmentPath);
-  const providers = Array.isArray(environment?.providers)
-    ? environment.providers as CachedProviderStatus[]
-    : undefined;
-  if (providers === undefined) {
-    return [createMissingProviderBaselineCheck(environmentPath)];
-  }
-
-  return createCachedProviderChecks(createProviderStatusMap(providers));
-}
-
-// ============================================================================
-// Workspace helpers
-// ============================================================================
+export type { DoctorCommandData } from './doctor-support.js';
+export { buildDoctorCommandData } from './doctor-support.js';
 
 async function canAccess(path: string, mode = constants.R_OK | constants.W_OK): Promise<boolean> {
   try {
@@ -197,72 +35,6 @@ async function canAccess(path: string, mode = constants.R_OK | constants.W_OK): 
     return false;
   }
 }
-
-async function readJsonFile(path: string): Promise<Record<string, unknown> | undefined> {
-  try {
-    const raw = await readFile(path, 'utf8');
-    const parsed = parseJsonObjectString(raw);
-    return parsed.error === undefined ? parsed.value : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-// ============================================================================
-// Rendering
-// ============================================================================
-
-function statusIcon(status: DoctorStatus): string {
-  if (status === 'ok') return `${GREEN}\u2713${RESET}`;
-  if (status === 'fail') return `${RED}\u2717${RESET}`;
-  return `${YELLOW}\u26A0${RESET}`;
-}
-
-function renderReport(basePath: string, checks: DoctorCheck[], summary: DoctorSummary): string {
-  const overallStatus = summary.fail > 0 ? 'unhealthy' : summary.warn > 0 ? 'warning' : 'healthy';
-
-  const header = [
-    '',
-    `${BOLD}AutomatosX Doctor${RESET}`,
-    `Base path: ${basePath}`,
-    `Overall status: ${overallStatus}`,
-    `Summary: ${summary.ok} ok, ${summary.warn} warning${summary.warn === 1 ? '' : 's'}, ${summary.fail} failure${summary.fail === 1 ? '' : 's'}`,
-    '',
-  ];
-
-  const checkLines = checks.map((c) => `[${c.status.toUpperCase()}] ${statusIcon(c.status)} ${c.message}`);
-
-  const fixes = checks
-    .filter((c) => c.status === 'fail' || c.status === 'warn')
-    .filter((c) => {
-      const msg = c.message.toLowerCase();
-      return msg.includes('run "ax') || msg.includes('ax setup');
-    });
-
-  const fixLines: string[] = [];
-  if (fixes.length > 0) {
-    fixLines.push('', `${BOLD}Suggested Fixes:${RESET}`);
-    let idx = 0;
-    for (const fix of fixes) {
-      const runMatch = /Run "([^"]+)"/.exec(fix.message);
-      if (runMatch?.[1] !== undefined) {
-        idx++;
-        fixLines.push(`  ${idx}. ${DIM}${fix.message.split('.')[0]}${RESET}`);
-        fixLines.push(`     Run: ${CYAN}${runMatch[1]}${RESET}`);
-      }
-    }
-  }
-
-  return [...header, ...checkLines, ...fixLines, ''].join('\n');
-}
-
-function summarizeChecks(checks: DoctorCheck[]): DoctorSummary {
-  return checks.reduce<DoctorSummary>((s, c) => { s[c.status] += 1; return s; }, { ok: 0, warn: 0, fail: 0 });
-}
-
-// ============================================================================
-// Command
-// ============================================================================
 
 export async function doctorCommand(args: string[], options: CLIOptions): Promise<CommandResult> {
   if (args[0] !== undefined) {
@@ -282,14 +54,12 @@ export async function doctorCommand(args: string[], options: CLIOptions): Promis
   const configPath = join(automatosxDir, 'config.json');
   const environmentPath = join(automatosxDir, 'environment.json');
   const localMcpPath = join(automatosxDir, 'mcp.json');
-  const claudeMcpPath = join(basePath, '.mcp.json');
   const agentsMdPath = join(basePath, 'AGENTS.md');
   const providerSummaryPath = join(automatosxDir, 'providers.json');
   const emptyGovernanceSnapshot = createEmptyCliGovernanceSnapshot();
   let governance = emptyGovernanceSnapshot.governance;
   let deniedInstalledBridges: DeniedInstalledBridgeAggregate = emptyGovernanceSnapshot.deniedInstalledBridges;
 
-  // ── Base path ──────────────────────────────────────────────────────────────
   const basePathReady = await canAccess(basePath);
   checks.push({
     id: 'base-path',
@@ -300,15 +70,18 @@ export async function doctorCommand(args: string[], options: CLIOptions): Promis
   });
 
   if (!basePathReady) {
-    const summary = summarizeChecks(checks);
-    return failure(renderReport(basePath, checks, summary), { basePath, status: 'unhealthy', checks, summary });
+    const summary = summarizeDoctorChecks(checks);
+    return failure(renderDoctorReport(basePath, checks, summary), {
+      basePath,
+      status: 'unhealthy',
+      checks,
+      summary,
+    });
   }
 
-  // ── Provider CLIs ──────────────────────────────────────────────────────────
   checks.push(...(await getProviderChecks(environmentPath)));
 
-  // ── Workspace config ───────────────────────────────────────────────────────
-  const config = await readJsonFile(configPath);
+  const config = await readJsonObjectFile(configPath);
   if (config === undefined) {
     checks.push({
       id: 'workspace-config',
@@ -347,26 +120,23 @@ export async function doctorCommand(args: string[], options: CLIOptions): Promis
     });
   }
 
-  // ── Init artifacts ─────────────────────────────────────────────────────────
   const initArtifacts = [
     { label: 'AGENTS.md', path: agentsMdPath },
     { label: '.automatosx/mcp.json', path: localMcpPath },
-    { label: '.mcp.json', path: claudeMcpPath },
   ];
   const missingInitArtifacts = (
-    await Promise.all(initArtifacts.map(async (a) => ({ ...a, ok: await canAccess(a.path, constants.R_OK) })))
-  ).filter((a) => !a.ok).map((a) => a.label);
+    await Promise.all(initArtifacts.map(async (artifact) => ({ ...artifact, ok: await canAccess(artifact.path, constants.R_OK) })))
+  ).filter((artifact) => !artifact.ok).map((artifact) => artifact.label);
 
   checks.push({
     id: 'init-artifacts',
     status: missingInitArtifacts.length === 0 ? 'ok' : 'warn',
     message: missingInitArtifacts.length === 0
-      ? 'Project bootstrap artifacts are present.'
-      : `Project bootstrap artifacts are incomplete (${missingInitArtifacts.join(', ')}). Run "ax setup".`,
+      ? 'Stable bootstrap artifacts are present (AGENTS.md and .automatosx/mcp.json).'
+      : `Stable bootstrap artifacts are incomplete (${missingInitArtifacts.join(', ')}). Run "ax setup".`,
   });
 
-  // ── Provider summary ───────────────────────────────────────────────────────
-  const providerSummary = await readJsonFile(providerSummaryPath);
+  const providerSummary = await readJsonObjectFile(providerSummaryPath);
   const summaryProviders = Array.isArray(providerSummary?.providers) ? providerSummary.providers as Array<{
     providerId?: string; enabled?: boolean; installed?: boolean; paths?: string[];
   }> : undefined;
@@ -378,7 +148,7 @@ export async function doctorCommand(args: string[], options: CLIOptions): Promis
       message: 'Provider integration summary is missing or invalid (.automatosx/providers.json). Run "ax setup".',
     });
   } else {
-    const enabledProviders = summaryProviders.filter((p) => p.enabled === true);
+    const enabledProviders = summaryProviders.filter((provider) => provider.enabled === true);
     checks.push({
       id: 'provider-summary',
       status: 'ok',
@@ -414,7 +184,6 @@ export async function doctorCommand(args: string[], options: CLIOptions): Promis
     });
   }
 
-  // ── Shared runtime ─────────────────────────────────────────────────────────
   try {
     const [agents, policies, traces, workflows, runtimeStatus] = await Promise.all([
       runtime.listAgents(),
@@ -470,16 +239,15 @@ export async function doctorCommand(args: string[], options: CLIOptions): Promis
     });
   }
 
-  // ── MCP surface ────────────────────────────────────────────────────────────
   try {
     const tools = createMcpServerSurface({ basePath }).listTools();
-    const missingTools = REQUIRED_MCP_TOOLS.filter((t) => !tools.includes(t));
+    const missingTools = STABLE_V15_MCP_TOOL_FAMILIES.filter((toolName) => !tools.includes(toolName));
     checks.push({
       id: 'mcp-surface',
       status: missingTools.length === 0 ? 'ok' : 'fail',
       message: missingTools.length === 0
-        ? `MCP surface is available (${tools.length} tools).`
-        : `MCP surface is missing required tools (${missingTools.join(', ')}).`,
+        ? `MCP surface is available (${tools.length} tools; stable workflow-first contract present).`
+        : `MCP surface is missing stable workflow-first tools (${missingTools.join(', ')}).`,
     });
   } catch (error) {
     checks.push({
@@ -489,10 +257,10 @@ export async function doctorCommand(args: string[], options: CLIOptions): Promis
     });
   }
 
-  const summary = summarizeChecks(checks);
+  const summary = summarizeDoctorChecks(checks);
   const overallStatus = summary.fail > 0 ? 'unhealthy' : summary.warn > 0 ? 'warning' : 'healthy';
-  const report = renderReport(basePath, checks, summary);
-  const data = buildDoctorCommandData({
+  const report = renderDoctorReport(basePath, checks, summary);
+  const data: DoctorCommandData = buildDoctorCommandData({
     basePath,
     status: overallStatus,
     checks,

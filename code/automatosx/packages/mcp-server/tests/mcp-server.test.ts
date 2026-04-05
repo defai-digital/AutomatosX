@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { chmod, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
@@ -10,7 +10,13 @@ import { createRuntimeBridgeService } from '@defai.digital/shared-runtime/bridge
 import { RuntimeGovernanceAggregateSchema } from '@defai.digital/shared-runtime/governance';
 import { initCommand, setupCommand } from '../../cli/src/commands/index.js';
 import type { CLIOptions } from '../../cli/src/types.js';
-import { createMcpServerSurface, MCP_BASE_PATH_ENV_VAR } from '../src/index.js';
+import {
+  createMcpServerSurface,
+  DEFAULT_SETUP_MCP_TOOL_FAMILIES,
+  LEGACY_MCP_TOOL_ALIASES,
+  MCP_BASE_PATH_ENV_VAR,
+  STABLE_V15_MCP_TOOL_FAMILIES,
+} from '../src/index.js';
 import { ensurePackageBuilt } from '../../../tests/support/ensure-built.js';
 
 const execFileAsync = promisify(execFile);
@@ -19,6 +25,7 @@ const MCP_SERVER_PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)),
 const WORKSPACE_ROOT = resolve(MCP_SERVER_PACKAGE_ROOT, '..', '..');
 const CLI_ENTRY_PATH = join(WORKSPACE_ROOT, 'packages', 'cli', 'dist', 'main.js');
 const SHARED_RUNTIME_BUNDLED_WORKFLOW_DIR = join(WORKSPACE_ROOT, 'packages', 'shared-runtime', 'workflows');
+const MCP_CONFIG_PATH = join(WORKSPACE_ROOT, '.automatosx', 'mcp.json');
 
 function createTempDir(): string {
   const dir = join(MCP_SERVER_PACKAGE_ROOT, '.tmp', `mcp-surface-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`);
@@ -230,6 +237,37 @@ describe('mcp server surface', () => {
       stepId: 'analyze-requirement',
       type: 'prompt',
     });
+  });
+
+  it('keeps the stable v15 MCP tool families available under unprefixed canonical names', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const surface = createMcpServerSurface({ basePath: tempDir });
+    const toolNames = new Set(surface.listTools());
+    const toolDefinitions = new Set(surface.listToolDefinitions().map((tool) => tool.name));
+
+    expect(Array.from(STABLE_V15_MCP_TOOL_FAMILIES).every((toolName) => toolNames.has(toolName))).toBe(true);
+    expect(Array.from(STABLE_V15_MCP_TOOL_FAMILIES).every((toolName) => toolDefinitions.has(toolName))).toBe(true);
+    expect(Array.from(LEGACY_MCP_TOOL_ALIASES).every((toolName) => toolNames.has(toolName))).toBe(false);
+    expect(Array.from(LEGACY_MCP_TOOL_ALIASES).every((toolName) => toolDefinitions.has(toolName))).toBe(false);
+  });
+
+  it('keeps generated mcp config aligned with the stable v15 MCP tool families', async () => {
+    const configuredTools = new Set(
+      (JSON.parse(readFileSync(MCP_CONFIG_PATH, 'utf8')) as { tools?: string[] }).tools ?? [],
+    );
+
+    expect(Array.from(STABLE_V15_MCP_TOOL_FAMILIES).every((toolName) => configuredTools.has(toolName))).toBe(true);
+    expect(Array.from(LEGACY_MCP_TOOL_ALIASES).every((toolName) => configuredTools.has(toolName))).toBe(false);
+  });
+
+  it('keeps the checked-in default setup mcp config narrowed to the stable v15 tool families', async () => {
+    const configuredTools = (
+      JSON.parse(readFileSync(MCP_CONFIG_PATH, 'utf8')) as { tools?: string[] }
+    ).tools ?? [];
+
+    expect(configuredTools).toEqual([...DEFAULT_SETUP_MCP_TOOL_FAMILIES]);
   });
 
   it('defaults the MCP surface base path to the current working directory', async () => {

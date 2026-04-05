@@ -1,6 +1,6 @@
-# AutomatosX OSS
+# AutomatosX | AX Trust
 
-**AI orchestration through MCP - Supercharge your AI coding assistant**
+Trusted runtime and governance for AI software delivery.
 
 [![Version](https://img.shields.io/badge/version-14.0.0-green.svg)](https://github.com/defai-digital/AutomatosX/releases)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D22.5.0-blue.svg)](https://nodejs.org)
@@ -8,80 +8,83 @@
 
 ---
 
-## What is AutomatosX?
+## What is AX Trust?
 
-AutomatosX adds **80+ specialized tools** to your AI coding assistant through MCP (Model Context Protocol). Instead of just chatting with Claude, Gemini, or Codex, you get:
+AutomatosX is the product family.
 
-- **28 specialized agents** (fullstack, security, devops, ml-engineer, meta-agents, etc.)
-- **Multi-model discussions** (ask Claude AND Gemini AND Grok the same question)
-- **Code review with focus areas** (security, performance, architecture)
-- **Persistent memory** across sessions
-- **Governance gates** to check AI-generated code
-- **Execution tracing** for full audit trails
-- **Workflow engine** with delegate steps, guard policies, and retry logic
-- **SQLite-backed stores** for memory, traces, and state
+This repository is being repositioned as `AX Trust`, the trusted execution and governance layer behind the `ax` system.
+
+Instead of positioning this repo as a generic AI toolbox, AX Trust focuses on a narrower and more defensible job:
+
+- workflow-first AI software delivery
+- trusted runtime execution
+- policy and governance enforcement
+- traceability, checkpoints, and resume
+- governed bridges and skills for internal capability extension
+- review, debugging, and discussion loops that remain inside the same trust model
+
+AX Trust combines:
+
+- workflows
+- agents
+- bridges
+- skills
+- dashboards
+- trust core: contracts, domains, workflow specs, invariants, guards, and governance policies
+
+The default operating story is:
+
+1. bootstrap a workspace with `ax setup`
+2. run one of the five first-class delivery workflows
+3. inspect traces, reviews, policy outcomes, and workflow artifacts
+4. extend capability through bridges, skills, and operator dashboards when needed
+
+This repository still contains broader advanced and experimental utilities, but they are not the default AX Trust product story.
 
 ---
 
 ## Quick Start (3 Steps)
 
 ```bash
-# 1. Install AutomatosX
+# 1. Install the CLI
 npm install -g @defai.digital/cli
 
 # 2. Bootstrap your project
 cd your-project
 ax setup
+ax doctor
+
+# 3. Run a trusted workflow
+ax ship --scope <area>
 ```
 
-Now use your AI CLI - it has access to all AutomatosX tools.
+Recommended first run:
+
+1. Start with `ship`, `architect`, `audit`, `qa`, or `release`.
+2. Use `--dry-run` when you want artifacts without runtime side effects.
+3. Inspect `.automatosx/workflows/` for `manifest.json`, `summary.json`, and generated markdown artifacts.
 
 ---
 
-## Using AutomatosX with Your AI CLI
+## Using AX Trust with Your AI CLI
 
-After running `ax setup`, your AI assistant gains access to 80+ new tools. Here's how to use them:
+After running `ax setup`, your AI CLI can connect to the local AX Trust MCP runtime and work through the trusted workflow surface instead of ad-hoc tool sprawl.
 
 ### With Claude Code
 
 ```bash
-# Start Claude Code in your project
 claude
-
-# Now you can use AutomatosX tools in conversation:
 ```
 
-**Example conversations with Claude:**
+Example prompts:
 
+```text
+Use ax architect --request "Add SSO for enterprise customers"
+
+Run ax review analyze src/ --focus security
+
+Use ax discuss "REST vs GraphQL for mobile app"
 ```
-You: Use ax_agent_recommend to find the best agent for "implement OAuth2 login"
-
-Claude: [Uses ax_agent_recommend tool]
-The recommended agent is "security" with 0.85 confidence because...
-
-You: Run that agent with ax_agent_run
-
-Claude: [Uses ax_agent_run tool with agentId: "security"]
-Here's the OAuth2 implementation plan...
-```
-
-```
-You: Use ax_discuss to get multiple AI perspectives on "REST vs GraphQL for mobile app"
-
-Claude: [Uses ax_discuss tool]
-After synthesizing perspectives from Claude, Gemini, and Grok:
-- REST is recommended for... [consensus summary]
-```
-
-```
-You: Run ax_review_analyze on src/api/ with focus on security
-
-Claude: [Uses ax_review_analyze tool]
-Found 3 security issues:
-1. SQL injection risk in users.ts:45...
-```
-
----
 
 ### With Gemini CLI
 
@@ -89,19 +92,13 @@ Found 3 security issues:
 gemini
 ```
 
+Example prompts:
+
+```text
+Run ax ship --scope packages/cli
+
+Use ax discuss quick "Should this release be feature-flagged?"
 ```
-You: I need to build a caching layer. Use ax_agent_run with the architecture agent.
-
-Gemini: [Uses ax_agent_run tool]
-Here's a recommended caching architecture...
-
-You: Now use ax_discuss_quick to validate this approach with other models
-
-Gemini: [Uses ax_discuss_quick tool]
-Multi-model consensus: The proposed approach is sound, with these refinements...
-```
-
----
 
 ### With Codex CLI
 
@@ -109,451 +106,207 @@ Multi-model consensus: The proposed approach is sound, with these refinements...
 codex
 ```
 
+Example prompts:
+
+```text
+Show me the stable built-in agents with ax agent list
+
+Run ax audit --scope packages/shared-runtime
+
+Check the available trust policies with ax policy list
 ```
-You: Use ax_agent_list to show me available agents
-
-Codex: [Uses ax_agent_list tool]
-Available agents (28 total):
-- fullstack: Senior Fullstack Engineer
-- backend: Backend Engineer
-- security: Security Engineer
-- architect: Strategic Technology Leader (meta-agent)
-...
-```
-
----
-
-### With Grok (via ax-cli)
-
-```bash
-ax-grok
-```
-
-```
-You: Use ax_guard_check with policy "bugfix" on the files I changed
-
-Grok: [Uses ax_guard_check tool]
-Guard check passed: All changes within policy boundaries.
-```
-
----
 
 ### With Cursor IDE
 
-Cursor IDE automatically detects the `.cursor/mcp.json` config created by `ax setup`.
-
-1. Run `ax setup` in your project
-2. Open the project in Cursor
-3. Use AutomatosX tools in Cursor's AI chat
+Run `ax setup`, open the project in Cursor, and use the same workflow-first surfaces through the generated MCP configuration.
 
 ---
 
-## Available MCP Tools (80+ total)
+## Default AX Trust Surface
 
-### Agent Tools
-| Tool | Description |
-|------|-------------|
-| `ax_agent_list` | List all specialized agents |
-| `ax_agent_run` | Execute an agent with input |
-| `ax_agent_get` | Get agent details |
-| `ax_agent_recommend` | Find best agent for a task |
-| `ax_agent_register` | Create custom agent |
-| `ax_agent_remove` | Remove an agent |
-| `ax_agent_capabilities` | List all capabilities |
+### Primary Commands
 
-### Discussion Tools
-| Tool | Description |
-|------|-------------|
-| `ax_discuss` | Multi-model discussion with synthesis |
-| `ax_discuss_quick` | Quick 2-round consensus |
-| `ax_discuss_recursive` | Multi-level recursive discussions with depth control |
+- `ax setup`
+- `ax ship --scope <area>`
+- `ax architect --request "<requirement>"`
+- `ax audit --scope <path-or-area>`
+- `ax qa --target <service-or-feature> --url <url>`
+- `ax release --release-version <version>`
 
-### Review Tools
-| Tool | Description |
-|------|-------------|
-| `ax_review_analyze` | Code review with focus (security, performance, architecture, etc.) |
-| `ax_review_list` | List recent reviews |
+### Stable Support Commands
 
-### Guard Tools
-| Tool | Description |
-|------|-------------|
-| `ax_guard_check` | Check changes against policy |
-| `ax_guard_list` | List available policies |
-| `ax_guard_apply` | Apply policy to session |
+- `ax list`
+- `ax run <workflow-id>`
+- `ax resume <trace-id>`
+- `ax trace [trace-id]`
+- `ax discuss "<topic>"`
+- `ax agent list`
+- `ax review analyze <paths...>`
+- `ax policy list`
+- `ax doctor`
+- `ax status`
+- `ax config show`
 
-### Memory Tools
-| Tool | Description |
-|------|-------------|
-| `ax_memory_store` | Store key-value data |
-| `ax_memory_retrieve` | Retrieve stored data |
-| `ax_memory_search` | Search memory |
-| `ax_memory_list` | List all keys |
-| `ax_memory_delete` | Delete a key |
+### Legacy Compatibility
 
-### Session Tools
-| Tool | Description |
-|------|-------------|
-| `ax_session_create` | Create collaboration session |
-| `ax_session_join` | Join existing session |
-| `ax_session_complete` | Mark session complete |
-| `ax_session_status` | Check session status |
-| `ax_session_list` | List sessions |
-| `ax_session_leave` | Leave a session |
-| `ax_session_fail` | Mark session failed |
-| `ax_session_close_stuck` | Close stuck sessions |
-
-### Workflow Tools
-| Tool | Description |
-|------|-------------|
-| `ax_workflow_run` | Execute a workflow |
-| `ax_workflow_list` | List workflows |
-| `ax_workflow_describe` | Get workflow details |
-
-### Trace Tools
-| Tool | Description |
-|------|-------------|
-| `ax_trace_list` | List execution traces |
-| `ax_trace_get` | Get trace details |
-| `ax_trace_analyze` | Analyze trace for issues |
-| `ax_trace_tree` | Get hierarchical trace tree |
-| `ax_trace_by_session` | Get traces for a session |
-| `ax_trace_close_stuck` | Close stuck traces |
-
-### Scaffold Tools
-| Tool | Description |
-|------|-------------|
-| `ax_scaffold_contract` | Generate Zod schema |
-| `ax_scaffold_domain` | Generate domain package |
-| `ax_scaffold_guard` | Generate guard policy |
-
-### Config Tools
-| Tool | Description |
-|------|-------------|
-| `ax_config_get` | Get config value |
-| `ax_config_set` | Set config value |
-| `ax_config_show` | Show full config |
-
-### File System Tools
-| Tool | Description |
-|------|-------------|
-| `ax_file_write` | Write file content |
-| `ax_file_exists` | Check if file exists |
-| `ax_directory_create` | Create directory |
-
-### Ability Tools
-| Tool | Description |
-|------|-------------|
-| `ax_ability_list` | List available abilities |
-| `ax_ability_inject` | Inject abilities into prompt |
-
-### Parallel Execution Tools
-| Tool | Description |
-|------|-------------|
-| `ax_parallel_run` | Execute multiple agents in parallel with DAG dependencies |
-| `ax_parallel_plan` | Preview execution plan without running |
-
-### Semantic Search Tools
-| Tool | Description |
-|------|-------------|
-| `ax_semantic_store` | Store content with vector embeddings |
-| `ax_semantic_search` | Find similar content by meaning |
-| `ax_semantic_get` | Retrieve specific item by key |
-| `ax_semantic_list` | List stored items |
-| `ax_semantic_delete` | Remove item from store |
-| `ax_semantic_stats` | Storage statistics |
-| `ax_semantic_clear` | Clear namespace |
-
-### Research Tools
-| Tool | Description |
-|------|-------------|
-| `ax_research_query` | Web search with AI synthesis |
-| `ax_research_fetch` | Fetch and extract from URL |
-| `ax_research_synthesize` | Combine sources into answer |
-
-### Design Tools
-| Tool | Description |
-|------|-------------|
-| `ax_design_api` | Generate OpenAPI/AsyncAPI specs |
-| `ax_design_component` | Create component interface designs |
-| `ax_design_schema` | Generate Zod/JSON schemas |
-| `ax_design_architecture` | Create architecture diagrams (Mermaid, PlantUML, C4) |
-| `ax_design_list` | List design artifacts |
-
-### Git Tools
-| Tool | Description |
-|------|-------------|
-| `ax_git_status` | Repository status |
-| `ax_git_diff` | Show file changes |
-| `ax_commit_prepare` | Stage files and generate commit message |
-| `ax_pr_create` | Create GitHub pull request with AI description |
-| `ax_pr_review` | Get PR details for review |
-
-### Feedback Tools
-| Tool | Description |
-|------|-------------|
-| `ax_feedback_submit` | Submit task feedback |
-| `ax_feedback_history` | View feedback history |
-| `ax_feedback_stats` | Agent feedback statistics |
-| `ax_feedback_overview` | System-wide feedback summary |
-| `ax_feedback_adjustments` | View score adjustments |
-
-### MCP Ecosystem Tools
-| Tool | Description |
-|------|-------------|
-| `ax_mcp_server_register` | Register external MCP server |
-| `ax_mcp_server_list` | List registered servers |
-| `ax_mcp_server_unregister` | Remove server registration |
-| `ax_mcp_tools_discover` | Discover tools from servers |
-| `ax_mcp_tool_invoke` | Call tool on external server |
-| `ax_mcp_tools_list` | List discovered tools |
+- `ax guard ...` still works as an alias for `ax policy ...`
 
 ---
 
-## Example Workflows
+## Built-in stable agents
 
-### 1. Get Multiple AI Perspectives
+The current stable built-in agent catalog is:
 
-```
-You: Use ax_discuss to analyze "Should we use microservices or monolith for a 5-person startup?"
+- `architect`
+- `quality`
+- `bug-hunter`
+- `release-manager`
 
-AI: [Calls ax_discuss with topic and default providers: claude, gemini, grok]
-
-Result: After 2 rounds of discussion, the consensus is:
-- Start with a modular monolith (recommended by all 3 models)
-- Claude emphasizes: Operational simplicity crucial for small teams
-- Gemini adds: Consider service boundaries for future extraction
-- Grok suggests: Use feature flags for gradual migration later
-```
-
-### 2. Security-Focused Code Review
-
-```
-You: Run ax_review_analyze on src/auth/ with focus "security"
-
-AI: [Calls ax_review_analyze with paths: ["src/auth/"], focus: "security"]
-
-Result: Found 2 issues:
-1. HIGH: Potential SQL injection in src/auth/login.ts:45
-   - User input concatenated directly in query
-   - Recommendation: Use parameterized queries
-
-2. MEDIUM: Missing rate limiting on src/auth/reset-password.ts
-   - Endpoint vulnerable to brute force
-   - Recommendation: Add rate limiting middleware
-```
-
-### 3. Find the Right Agent for Your Task
-
-```
-You: Use ax_agent_recommend for "set up Kubernetes deployment with auto-scaling"
-
-AI: [Calls ax_agent_recommend with task]
-
-Result:
-- Recommended: devops (confidence: 0.92)
-- Reason: Task involves K8s, deployment automation, infrastructure
-- Alternatives:
-  - backend (0.45) - can help with app configuration
-  - architecture (0.38) - can review scaling strategy
-```
-
-### 4. Execute a Specialized Agent
-
-```
-You: Run ax_agent_run with agentId "devops" and input {"query": "Create Kubernetes deployment for Node.js app with HPA"}
-
-AI: [Calls ax_agent_run]
-
-Result: Here's your Kubernetes configuration:
-[Agent generates deployment.yaml, service.yaml, hpa.yaml with explanations]
-```
-
-### 5. Check Changes Against Policy
-
-```
-You: Use ax_guard_check with policy "bugfix" and changedPaths from my git diff
-
-AI: [Calls ax_guard_check with policy: "bugfix", changedPaths: ["src/api/users.ts", "src/utils/validate.ts"]]
-
-Result:
-- Status: PASS
-- Changed packages: 2 (within limit of 3)
-- No forbidden paths modified
-- Dependency boundaries respected
-```
+Broader persona-style agents should be treated as future or registry-defined extensions unless they are explicitly added to the stable catalog.
 
 ---
 
-## Available Agents (28)
+## What Teams Use AX Trust For
 
-### Meta-Agents (Dynamic Capability Loading)
-| Agent | Expertise | Best For |
-|-------|-----------|----------|
-| `architect` | System design, tech strategy, product | High-level architecture and planning |
-| `auditor` | Security, testing, compliance | Quality and security verification |
-| `builder` | Fullstack, backend, frontend, ML | Implementation orchestration |
-| `executor` | Task routing, workflow execution | Complex multi-step tasks |
-| `operator` | DevOps, MLOps, deployment | Infrastructure and operations |
-| `researcher` | Analysis, data science, writing | Research and documentation |
-| `reviewer` | Code review, security, quality | Verification and validation |
+### 1. Trusted Workflow Execution
 
-### Specialist Agents
-| Agent | Expertise | Best For |
-|-------|-----------|----------|
-| `fullstack` | React, Node.js, TypeScript | End-to-end features |
-| `backend` | APIs, databases, microservices | Server-side development |
-| `frontend` | React, Vue, CSS, accessibility | UI components |
-| `architecture` | System design, patterns | Architecture decisions |
-| `security` | OWASP, audits, secure coding | Security reviews |
-| `devops` | Docker, K8s, CI/CD | Infrastructure |
-| `mobile` | React Native, Flutter | Mobile apps |
-| `blockchain-developer` | Solidity, DeFi, NFTs | Web3 development |
-| `data-scientist` | Python, ML, statistics | Data analysis |
-| `ml-engineer` | PyTorch, MLOps | Production ML |
-| `mlops-engineer` | ML pipelines, deployment | ML infrastructure |
-| `bug-hunter` | Bug detection, edge cases | Proactive bug hunting |
-| `cto` | Strategy, leadership | Technical direction |
-| `ceo` | Business strategy | Business decisions |
-| `product` | Requirements, roadmaps | Product planning |
-| `quantum-engineer` | Quantum algorithms | Quantum computing |
-| `aerospace-scientist` | Aerospace systems | Aerospace engineering |
-| `creative-marketer` | Marketing, content | Marketing campaigns |
-| `quality` | Testing, QA | Test planning |
-| `writer` | Documentation, API docs | Technical writing |
-| `standard` | General assistance | Simple tasks |
+Use AX Trust when teams want software delivery workflows to remain:
+
+- constrained
+- traceable
+- resumable
+- reviewable
+- governable
+
+### 2. Debugging and Review
+
+High-value entry points include:
+
+- `ax review analyze <paths...>`
+- `ax audit --scope <path-or-area>`
+- `ax trace analyze <trace-id>`
+- `ax discuss "<topic>"`
+
+This is where teams often use AX Trust to find, explain, and verify issues through a governed runtime rather than a single unconstrained agent session.
+
+### 3. Governed Extension
+
+Use bridges and skills when AX Trust needs to connect to internal tools, commands, services, or team-specific capability packaging.
+
+These surfaces matter, but they stay under the same trust model instead of becoming a separate product story.
 
 ---
 
-## CLI Commands
+## CLI Examples
 
 ```bash
-# System
-ax setup                    # Project bootstrap: workspace + MCP integration
-ax doctor                   # Check provider health
-ax status                   # Runtime status
-ax monitor                  # Launch web dashboard
+# Workflow-first
+ax ship --scope packages/cli
+ax architect --request "Add SSO for enterprise customers"
+ax audit --scope packages/shared-runtime
+ax qa --target monitor --url https://localhost:3000
+ax release --release-version 14.0.1
 
-# Direct provider calls
-ax call claude "Explain this code"
-ax call gemini --file ./src/api.ts "Review this"
-ax call --autonomous --goal "refactor auth module" --max-rounds 5
-
-# Agents
-ax agent list
-ax agent run security --input '{"query": "audit auth"}'
-
-# Review
-ax review analyze src/ --focus security
-ax review analyze src/ --since main
-
-# Discussion
-ax discuss "REST vs GraphQL"
-
-# Guard
-ax guard check --policy bugfix --changed-paths src/
-
-# Workflows
+# Stable support
+ax list
 ax run <workflow-id>
-ax ship --scope <area>
-ax architect --request "<requirement>"
-ax audit --scope <path-or-area>
-ax qa --target <service-or-feature> --url <url>
-ax release --release-version <version>
-
-# Traces
-ax trace analyze <trace-id>
-ax trace by-session <session-id>
-ax trace tree <trace-id>
-
-# Other
-ax ability list
-ax feedback submit
-ax iterate <command> --max-iterations 3
 ax resume <trace-id>
-ax history
-ax scaffold contract
-ax update
+ax trace
+ax trace analyze <trace-id>
+ax discuss "REST vs GraphQL for mobile app"
+ax agent list
+ax review analyze src/ --focus security
+ax policy list
 ```
+
+Advanced surfaces still available in the CLI include `bridge`, `skill`, `monitor`, `call`, `iterate`, `mcp`, `feedback`, `history`, `cleanup`, `scaffold`, `memory`, and `semantic`.
 
 ---
 
-## Workflow Engine (v14)
+## Trust Core
 
-v14 ships a full workflow execution engine with support for all step types:
+AX Trust is built around a trust core that constrains and explains runtime behavior:
 
-| Step Type | Description |
-|-----------|-------------|
-| `prompt` | LLM prompt execution |
-| `tool` | MCP tool invocation |
-| `conditional` | Branch on context values |
-| `loop` | Iterate over collections |
-| `parallel` | Concurrent step execution |
-| `discuss` | Multi-model discussion step |
-| `delegate` | Route to a registered agent (with depth + circular guards) |
+- contracts define valid workflow, bridge, skill, and policy shapes
+- domains and workflow specs encode the intended operating model
+- invariants protect checkpoint integrity and execution replay safety
+- guards enforce step-level rules during execution
+- governance policies turn those constraints into operator-facing controls and trace evidence
 
-Workflows are defined as YAML files and executed via `ax run` or `ax_workflow_run`.
+`Compliance` is treated as an outcome of this trust core, not as the product's top-level component name.
+
+---
+
+## MCP Surface
+
+`ax setup` generates an MCP server config that points clients at:
+
+```json
+{
+  "command": "ax",
+  "args": ["mcp", "serve"]
+}
+```
+
+The runtime exposes a larger MCP tool surface than the default AX Trust surface. The most important stable tool families are:
+
+- workflow: `workflow_run`, `workflow_list`, `workflow_describe`
+- trace: `trace_get`, `trace_list`, `trace_analyze`, `trace_by_session`, `trace_tree`
+- agent: `agent_get`, `agent_list`, `agent_run`, `agent_recommend`
+- discussion: `discuss_run`, `discuss_quick`, `discuss_recursive`
+- review: `review_analyze`, `review_list`
+- policy / guard runtime: `guard_check`, `guard_list`, `guard_apply`
+- session: `session_create`, `session_get`, `session_list`, `session_join`, `session_leave`, `session_complete`, `session_fail`
+
+`ax setup` writes these stable families into the generated project-local `.automatosx/mcp.json` by default.
+
+Advanced MCP helpers remain implemented for operator use, but they are no longer the default onboarding story.
+
+---
+
+## Current Product Boundaries
+
+AX Trust is not currently positioning itself as:
+
+- a generic workflow marketplace
+- a broad persona marketplace
+- a generic bag of MCP helper tools
+- a design-generation-first product
+- a pure legal or GRC platform
+
+`ax bridge` and `ax skill` remain important extension surfaces, but v15 treats them as advanced local-first surfaces. Local paths are the supported default. Remote bridge install and remote skill import are explicitly out of scope for the stable v15 story.
+
+`ax monitor` remains available as an advanced local operator dashboard. It is not part of the default onboarding or headline AX Trust surface in v15.
 
 ---
 
 ## Provider Installation
 
-Install at least one AI provider CLI:
+Install at least one provider CLI:
 
-| Provider | Command | Installation |
-|----------|---------|--------------|
-| Claude | `claude` | [Claude Code](https://github.com/anthropics/claude-code) |
-| Gemini | `gemini` | [Gemini CLI](https://github.com/google-gemini/gemini-cli) |
-| Codex | `codex` | [Codex CLI](https://github.com/openai/codex) |
-| Grok | `ax-grok` | [ax-cli](https://github.com/defai-digital/ax-cli) (requires XAI_API_KEY) |
-| OpenCode | `opencode` | [OpenCode](https://github.com/opencode-ai/opencode) |
+- Claude Code: `claude`
+- Gemini CLI: `gemini`
+- Codex CLI: `codex`
+- ax-grok: `ax-grok`
 
----
+Then run:
 
-## IDE Integration
-
-| IDE | MCP Config Location |
-|-----|---------------------|
-| [Cursor](https://cursor.com/) | `.cursor/mcp.json` (per-project) |
-| [Antigravity](https://antigravity.google) | `~/.gemini/antigravity/mcp_config.json` (global) |
-
-`ax setup` automatically configures MCP for all detected providers and IDEs.
+```bash
+ax doctor
+```
 
 ---
 
-## Setup
+## Product Docs
 
-- **`ax setup`** — Project bootstrap. Detects installed provider CLIs, creates `.automatosx/` in the current directory, writes `AGENTS.md`, and registers the MCP server with detected providers and IDEs.
+Current product-direction docs:
 
----
+- [AX Trust overview](./docs/ax-trust-overview.md)
+- [AX Trust product definition PRD](./automatosx/prd/ax-trust-product-repositioning.md)
+- [AX Trust product-definition ADR](./automatosx/adr/0003-ax-trust-product-family-and-cli-policy-surface.md)
+- [v15 product scope](./automatosx/prd/v15-product-scope-and-surface-contraction.md)
+- [v15 ADR](./automatosx/adr/0002-v15-product-boundary.md)
+- [v15 surface deprecation matrix](./docs/v15-surface-deprecation-matrix.md)
+- [v15 surface registry](./automatosx/product-surface/v15-surface-registry.json)
 
-## What's New in v14
-
-- **Monorepo architecture** — Split into focused packages: `contracts`, `workflow-engine`, `shared-runtime`, `state-store`, `trace-store`, `mcp-server`, `monitoring`, `cli`
-- **Workflow engine** — Full step type support including `delegate` with depth and circular delegation guards
-- **SQLite backends** — Native `node:sqlite` storage for state-store and trace-store (WAL mode, FTS5 full-text search)
-- **Unified runtime** — CLI and MCP share a single `shared-runtime`; no duplicated orchestration logic
-- **New CLI commands** — `ability`, `feedback`, `history`, `iterate`, `monitor`, `scaffold`, `update`
-- **Stronger guards** — Built-in `safe-filesystem` policy; secret leakage detection; prototype pollution protection
-- **Legacy MCP aliases** — `ax_*` tool names from v13.5 continue to work
-
-[Full Changelog](CHANGELOG.md)
-
----
-
-## License
-
-**Business Source License 1.1** - see [LICENSE](LICENSE)
-
-- **Effective starting v13.3.0**: Source-available under BSL 1.1
-- **Free for non-production use**: Development, testing, personal projects
-- **Free for small production**: Organizations with < $2M annual revenue
-- **Commercial license required**: Production use by organizations with >= $2M annual revenue
-- **Converts to Apache 2.0**: Four years after each version's release date
-
-For commercial licensing inquiries, contact: licensing@defai.digital
-
-See [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md) for full details
-
----
-
-[GitHub](https://github.com/defai-digital/AutomatosX) | [Issues](https://github.com/defai-digital/AutomatosX/issues)
+These documents define the current AX Trust direction together with the older v15 product-boundary work.

@@ -19,8 +19,11 @@ export const MONITOR_DASHBOARD_SCRIPT_TABS = `
         return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
       });
 
-      const filtered = traces.filter(function(t) {
-        const statusOk = activityFilter === 'all' || t.status === activityFilter;
+      // Pre-filter by everything except status so filter-pill counts reflect
+      // the runs each pill would actually show (bug fix: counts previously
+      // ignored workflow/search/time filters and could display "All (30)"
+      // while the list below rendered an empty state).
+      const preStatusFiltered = traces.filter(function(t) {
         const wfOk = activityWorkflow === 'all' || t.workflowId === activityWorkflow;
         const timeOk = withinTimeWindow(t.startedAt, activityTimeWindow);
         const searchOk = matchesQuery(activitySearch, [
@@ -33,7 +36,10 @@ export const MONITOR_DASHBOARD_SCRIPT_TABS = `
           metadataString(t.metadata, 'command'),
           ...(extractTraceProviders(t)),
         ]);
-        return statusOk && wfOk && timeOk && searchOk;
+        return wfOk && timeOk && searchOk;
+      });
+      const filtered = preStatusFiltered.filter(function(t) {
+        return activityFilter === 'all' || t.status === activityFilter;
       });
       const totalPages = Math.max(1, Math.ceil(filtered.length / ACTIVITY_PAGE_SIZE));
       activityPage = Math.min(Math.max(1, activityPage), totalPages);
@@ -42,7 +48,9 @@ export const MONITOR_DASHBOARD_SCRIPT_TABS = `
 
       let filterBar = '<div class="filter-bar">'
         + ['all', 'running', 'failed', 'completed'].map(function(s) {
-          const cnt = s === 'all' ? traces.length : traces.filter(function(t) { return t.status === s; }).length;
+          const cnt = s === 'all'
+            ? preStatusFiltered.length
+            : preStatusFiltered.filter(function(t) { return t.status === s; }).length;
           return '<button class="filter-pill' + (activityFilter === s ? ' active' : '') + '" data-filter-value="' + esc(s) + '" onclick="setActivityFilter(this.dataset.filterValue)">'
             + (s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)) + ' (' + cnt + ')'
             + '</button>';
@@ -204,6 +212,7 @@ export const MONITOR_DASHBOARD_SCRIPT_TABS = `
         return matchesQuery(providersSearch, [
           provider.providerId,
           provider.enabled ? 'enabled' : 'disabled',
+          provider.configuredButUnavailable ? 'not installed' : '',
           provider.detected ? 'detected' : 'unknown',
         ]);
       });

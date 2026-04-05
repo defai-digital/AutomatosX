@@ -10,26 +10,41 @@ export const MONITOR_DASHBOARD_SCRIPT_SHARED = `
         .replaceAll("'", '&#39;');
     }
 
+    function prettyJson(value) {
+      return JSON.stringify(value, null, 2);
+    }
+
+    function parseIsoTimestamp(iso) {
+      if (typeof iso !== 'string' || iso.length === 0) return null;
+      const ts = new Date(iso).getTime();
+      return Number.isFinite(ts) ? ts : null;
+    }
+
     function timeAgo(iso) {
-      if (!iso) return '—';
-      const ms = Date.now() - new Date(iso).getTime();
+      const ts = parseIsoTimestamp(iso);
+      if (ts === null) return '—';
+      const ms = Date.now() - ts;
       if (ms < 0) return 'just now';
       if (ms < 60000) return Math.floor(ms / 1000) + 's ago';
       if (ms < 3600000) return Math.floor(ms / 60000) + 'm ago';
       if (ms < 86400000) return Math.floor(ms / 3600000) + 'h ago';
       if (ms < 604800000) return Math.floor(ms / 86400000) + 'd ago';
-      const d = new Date(iso);
+      const d = new Date(ts);
       return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
 
     function durationMs(startedAt, completedAt) {
       if (!completedAt) return null;
-      return new Date(completedAt).getTime() - new Date(startedAt).getTime();
+      const start = parseIsoTimestamp(startedAt);
+      const end = parseIsoTimestamp(completedAt);
+      if (start === null || end === null) return null;
+      return end - start;
     }
 
     function durationLabel(startedAt, completedAt) {
       const ms = durationMs(startedAt, completedAt);
-      if (ms === null) return 'running';
+      if (ms === null) return completedAt ? '—' : 'running';
+      if (ms < 0) return '—';
       if (ms < 1000) return ms + 'ms';
       if (ms < 60000) return (ms / 1000).toFixed(1) + 's';
       return Math.floor(ms / 60000) + 'm ' + Math.floor((ms % 60000) / 1000) + 's';
@@ -120,6 +135,37 @@ export const MONITOR_DASHBOARD_SCRIPT_SHARED = `
       return renderStackHtml((items || []).map(function(item) {
         return renderEscapedDetailBlock(item);
       }).join(''));
+    }
+
+    function renderSummarySection(summary) {
+      return summary ? renderSection('Summary', renderEscapedDetailBlock(summary)) : '';
+    }
+
+    function renderErrorCallout(title, message, detailLines) {
+      const details = Array.isArray(detailLines)
+        ? detailLines.filter(function(line) { return typeof line === 'string' && line.length > 0; })
+        : [];
+      return '<div class="error-block">'
+        + '<h3>' + esc(title) + '</h3>'
+        + '<div class="error-message">' + esc(message) + '</div>'
+        + details.map(function(line) {
+          return '<div class="error-detail">' + esc(line) + '</div>';
+        }).join('')
+        + '</div>';
+    }
+
+    function renderJsonPreSection(title, value) {
+      return '<div class="section"><h2>' + esc(title) + '</h2><pre>' + esc(prettyJson(value)) + '</pre></div>';
+    }
+
+    function renderJsonCollapsibleSection(id, label, value) {
+      return '<div class="section">' + collapsible(id, label, prettyJson(value)) + '</div>';
+    }
+
+    function renderMetadataSection(id, metadata) {
+      return metadata && Object.keys(metadata).length > 0
+        ? renderJsonCollapsibleSection(id, 'Metadata', metadata)
+        : '';
     }
 
     function workflowEmptyStateHint(mode) {
@@ -255,7 +301,7 @@ export const MONITOR_DASHBOARD_SCRIPT_SHARED = `
     function latestTrace(traces) {
       if (!Array.isArray(traces) || traces.length === 0) return null;
       return traces.slice().sort(function(left, right) {
-        return new Date(right.startedAt).getTime() - new Date(left.startedAt).getTime();
+        return (parseIsoTimestamp(right.startedAt) || 0) - (parseIsoTimestamp(left.startedAt) || 0);
       })[0] || null;
     }
 
@@ -379,6 +425,7 @@ export const MONITOR_DASHBOARD_SCRIPT_SHARED = `
         ...(state.providers.detectedProviders || []),
         ...(state.providers.enabledProviders || []),
         ...(state.providers.installedButDisabledProviders || []),
+        ...(state.providers.configuredButUnavailableProviders || []),
       ]);
       Object.keys(usageById).forEach(function(providerId) { snapshotIds.add(providerId); });
       if (state.status && state.status.runtime && state.status.runtime.defaultProvider) {
@@ -392,6 +439,7 @@ export const MONITOR_DASHBOARD_SCRIPT_SHARED = `
           enabled: (state.providers.enabledProviders || []).includes(providerId),
           detected: (state.providers.detectedProviders || []).includes(providerId),
           installedButDisabled: (state.providers.installedButDisabledProviders || []).includes(providerId),
+          configuredButUnavailable: (state.providers.configuredButUnavailableProviders || []).includes(providerId),
           count: usage.count,
           failed: usage.failed,
           running: usage.running,
@@ -427,7 +475,7 @@ export const MONITOR_DASHBOARD_SCRIPT_SHARED = `
         + '<div class="row-main">'
         + '<div class="row-title workflow-name">' + esc(traceDisplayName(trace)) + '</div>'
         + (summary ? '<div class="row-sub"><span>' + esc(summary) + '</span></div>' : '')
-        + (guardSummary ? '<div class="row-sub"><span>Guard: ' + esc(truncateSummary(guardSummary, 108)) + '</span></div>' : '')
+        + (guardSummary ? '<div class="row-sub"><span>Policy: ' + esc(truncateSummary(guardSummary, 108)) + '</span></div>' : '')
         + '<div class="row-sub"><span class="trace-id-short">' + esc(shortId) + '…</span>'
         + '<span>' + esc(trace.surface || 'cli') + '</span>'
         + (providers.length > 0 ? '<span>' + esc(providers.join(', ')) + '</span>' : '')
@@ -484,6 +532,8 @@ export const MONITOR_DASHBOARD_SCRIPT_SHARED = `
     function providerRow(provider) {
       const stateBadge = provider.enabled
         ? '<span class="badge healthy">enabled</span>'
+        : provider.configuredButUnavailable
+          ? '<span class="badge warning">not installed</span>'
         : provider.installedButDisabled
           ? '<span class="badge warning">disabled</span>'
           : provider.detected
@@ -517,7 +567,7 @@ export const MONITOR_DASHBOARD_SCRIPT_SHARED = `
         + '<div class="row-main">'
         + '<div class="row-title workflow-name">' + esc(traceDisplayName(trace)) + '</div>'
         + (summary ? '<div class="row-sub"><span>' + esc(summary) + '</span></div>' : '')
-        + (guardSummary ? '<div class="row-sub"><span>Guard: ' + esc(truncateSummary(guardSummary, 108)) + '</span></div>' : '')
+        + (guardSummary ? '<div class="row-sub"><span>Policy: ' + esc(truncateSummary(guardSummary, 108)) + '</span></div>' : '')
         + '<div class="row-sub"><span class="trace-id-short mono">' + esc(String(trace.traceId || '').slice(0,12)) + '…</span>'
         + (providers.length > 0 ? '<span>' + esc(providers.join(', ')) + '</span>' : '')
         + '</div>'

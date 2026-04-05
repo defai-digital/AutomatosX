@@ -34,6 +34,45 @@ export type {
 export type { JsonSchema } from './tool-schema.js';
 export { MCP_BASE_PATH_ENV_VAR, resolveMcpSurfaceBasePath };
 
+export const STABLE_V15_MCP_TOOL_FAMILIES = [
+  'workflow_run',
+  'workflow_list',
+  'workflow_describe',
+  'trace_get',
+  'trace_list',
+  'trace_analyze',
+  'trace_by_session',
+  'trace_tree',
+  'agent_get',
+  'agent_list',
+  'agent_run',
+  'agent_recommend',
+  'discuss_run',
+  'discuss_quick',
+  'discuss_recursive',
+  'session_create',
+  'session_get',
+  'session_list',
+  'session_join',
+  'session_leave',
+  'session_complete',
+  'session_fail',
+  'review_analyze',
+  'review_list',
+  'guard_list',
+  'guard_apply',
+  'guard_check',
+] as const;
+
+export const LEGACY_MCP_TOOL_ALIASES = [
+  'ax_workflow_run',
+  'ax_agent_list',
+  'ax_discuss_run',
+  'ax_review_analyze',
+] as const;
+
+export const DEFAULT_SETUP_MCP_TOOL_FAMILIES = [...STABLE_V15_MCP_TOOL_FAMILIES] as const;
+
 export interface McpServerSurface {
   listTools(): string[];
   listToolDefinitions(): McpToolDefinition[];

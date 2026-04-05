@@ -118,6 +118,11 @@ export class SqliteTraceStore implements TraceStore {
       { col: 'session_id',      type: 'TEXT' },
       { col: 'agent_id',        type: 'TEXT' },
       { col: 'updated_at',      type: 'TEXT' },
+      { col: 'checkpoint_step_index', type: 'INTEGER' },
+      { col: 'checkpoint_step_id',    type: 'TEXT' },
+      { col: 'checkpoint_at',         type: 'TEXT' },
+      { col: 'workflow_hash',         type: 'TEXT' },
+      { col: 'checkpoint_outputs',    type: 'TEXT' },
     ];
     for (const { col, type } of traceCols) {
       try {
@@ -153,19 +158,24 @@ export class SqliteTraceStore implements TraceStore {
   private writeTrace(record: TraceRecord, options: { transactionalSteps: boolean }): void {
     const now = new Date().toISOString();
     const meta = record.metadata as Record<string, unknown> | undefined;
+    const cp = record.checkpoint;
 
     this.db.prepare(`
       INSERT INTO trace_records (
         trace_id, workflow_id, surface, status, started_at, completed_at,
         input, output, error_code, error_message, failed_step, metadata,
-        parent_trace_id, session_id, agent_id, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        parent_trace_id, session_id, agent_id, updated_at,
+        checkpoint_step_index, checkpoint_step_id, checkpoint_at, workflow_hash, checkpoint_outputs
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(trace_id) DO UPDATE SET
         workflow_id = excluded.workflow_id, surface = excluded.surface, status = excluded.status,
         completed_at = excluded.completed_at, input = excluded.input, output = excluded.output,
         error_code = excluded.error_code, error_message = excluded.error_message, failed_step = excluded.failed_step,
         metadata = excluded.metadata, parent_trace_id = excluded.parent_trace_id,
-        session_id = excluded.session_id, agent_id = excluded.agent_id, updated_at = excluded.updated_at
+        session_id = excluded.session_id, agent_id = excluded.agent_id, updated_at = excluded.updated_at,
+        checkpoint_step_index = excluded.checkpoint_step_index, checkpoint_step_id = excluded.checkpoint_step_id,
+        checkpoint_at = excluded.checkpoint_at, workflow_hash = excluded.workflow_hash,
+        checkpoint_outputs = excluded.checkpoint_outputs
     `).run(
       record.traceId, record.workflowId, record.surface, record.status, record.startedAt,
       record.completedAt ?? null,
@@ -177,6 +187,11 @@ export class SqliteTraceStore implements TraceStore {
       (meta?.['sessionId'] as string) ?? null,
       (meta?.['agentId'] as string) ?? null,
       now,
+      cp?.lastCompletedStepIndex ?? null,
+      cp?.lastCompletedStepId ?? null,
+      cp?.checkpointedAt ?? null,
+      cp?.workflowHash ?? null,
+      cp?.stepOutputs ? JSON.stringify(cp.stepOutputs) : null,
     );
 
     const deleteSteps = this.db.prepare(`DELETE FROM trace_steps WHERE trace_id = ?`);
@@ -459,6 +474,20 @@ export class SqliteTraceStore implements TraceStore {
       if (row.metadata) {
         record.metadata = safeJson(row.metadata, undefined);
       }
+      if (
+        row.checkpoint_step_index !== null
+        && row.checkpoint_step_id !== null
+        && row.checkpoint_at !== null
+        && row.workflow_hash !== null
+      ) {
+        record.checkpoint = {
+          lastCompletedStepIndex: row.checkpoint_step_index,
+          lastCompletedStepId: row.checkpoint_step_id,
+          checkpointedAt: row.checkpoint_at,
+          workflowHash: row.workflow_hash,
+          stepOutputs: row.checkpoint_outputs ? safeJson<Record<string, unknown>>(row.checkpoint_outputs, {}) : {},
+        };
+      }
 
       return record;
     });
@@ -545,6 +574,9 @@ interface TrRow {
   error_code: string | null; error_message: string | null; failed_step: string | null;
   metadata: string | null; parent_trace_id: string | null; session_id: string | null;
   agent_id: string | null; updated_at: string | null;
+  checkpoint_step_index: number | null; checkpoint_step_id: string | null;
+  checkpoint_at: string | null; workflow_hash: string | null;
+  checkpoint_outputs: string | null;
 }
 interface StepRow {
   trace_id: string;

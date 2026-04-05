@@ -126,6 +126,15 @@ export const GoalAnchorContextSchema = z.object({
 });
 export type GoalAnchorContext = z.infer<typeof GoalAnchorContextSchema>;
 
+export const CheckpointRecordSchema = z.object({
+  lastCompletedStepIndex: z.number().int().min(0),
+  lastCompletedStepId: z.string().min(1),
+  checkpointedAt: z.string().min(1),
+  workflowHash: z.string().min(1),
+  stepOutputs: z.record(z.string(), z.unknown()),
+});
+export type CheckpointRecord = z.infer<typeof CheckpointRecordSchema>;
+
 export const DEFAULT_STEP_GUARD: WorkflowStepGuard = {
   guardId: 'default-step-guard',
   stepId: '*',

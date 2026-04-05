@@ -55,7 +55,9 @@ Current guardrails:
 - [tests/runtime-public-consumer-audit.test.ts](./tests/runtime-public-consumer-audit.test.ts)
   Audits repo consumers across the top-level package and public subpath entrypoints so low-level public helpers do not linger without an explicit reason.
 - [tests/runtime-public-subpath-imports.test.ts](./tests/runtime-public-subpath-imports.test.ts)
-  Verifies the published subpath entrypoints resolve to the intended bridge, governance, and catalog surfaces.
+  Verifies the published subpath entrypoints resolve to the intended bridge, governance, and catalog surfaces in the source-level Vitest environment.
+- [tests/runtime-published-entrypoint-smoke.test.ts](./tests/runtime-published-entrypoint-smoke.test.ts)
+  Verifies the built package resolves the top-level and subpath entrypoints through Node package exports, not just Vitest aliases.
 - [tests/runtime-top-level-entrypoint-audit.test.ts](./tests/runtime-top-level-entrypoint-audit.test.ts)
   Ensures domain-specific consumers use the public subpaths instead of pulling bridge, governance, or catalog helpers from the top-level entrypoint.
 

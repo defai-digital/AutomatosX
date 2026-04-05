@@ -293,8 +293,8 @@ Workflow-native governance currently reuses shared-runtime outputs instead of re
 - `ax doctor` data payload and `/api/state` now carry a structured runtime-governance aggregate so external consumers do not need to parse raw trace metadata
 - `ax doctor --format json` now exposes canonical `data.governance` only
 - the repo-level governance contract is documented in `./governance-surface-contract.md`
-- the alias-removal outcome is summarized in `./governance-migration-note.md`
-- repo-level follow-up wording is staged in `./governance-upstream-sync-note.md`
+- the current AX Trust overview is documented in `./ax-trust-overview.md`
+- the accepted AX Trust product definition is documented in `../automatosx/prd/ax-trust-product-repositioning.md`
 
 Current config shape:
 

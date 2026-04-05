@@ -88,7 +88,7 @@ function formatWorkflowGuardSummary(config: {
   }
 
   const parts = [
-    `Workflow step "${stepLabel}" was blocked by guard "${config.guardId ?? 'unknown-guard'}".`,
+    `Workflow step "${stepLabel}" was blocked by policy "${config.guardId ?? 'unknown-policy'}".`,
     config.failedGates.length > 0 ? `Failed gates: ${config.failedGates.join(', ')}.` : undefined,
     config.failedGateMessages.length > 0 ? config.failedGateMessages.join(' ') : undefined,
   ].filter((value): value is string => value !== undefined);

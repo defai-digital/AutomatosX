@@ -146,6 +146,11 @@ export interface CLIOptions {
    * Quiet mode.
    */
   quiet?: boolean;
+
+  /**
+   * Force operation (e.g., re-run from beginning ignoring checkpoint).
+   */
+  force?: boolean;
 }
 
 /**

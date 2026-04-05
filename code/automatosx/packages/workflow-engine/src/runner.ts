@@ -43,6 +43,8 @@ interface ResolvedConfig {
   stepGuardEngine?: StepGuardEngine | undefined;
   executionId?: string | undefined;
   agentId?: string | undefined;
+  resumeFromStepIndex?: number | undefined;
+  priorStepOutputs?: Record<string, unknown> | undefined;
 }
 
 export class WorkflowRunner {
@@ -69,6 +71,12 @@ export class WorkflowRunner {
     if (config.agentId !== undefined) {
       this.config.agentId = config.agentId;
     }
+    if (config.resumeFromStepIndex !== undefined) {
+      this.config.resumeFromStepIndex = config.resumeFromStepIndex;
+    }
+    if (config.priorStepOutputs !== undefined) {
+      this.config.priorStepOutputs = config.priorStepOutputs;
+    }
   }
 
   async run(workflowData: unknown, input?: unknown): Promise<WorkflowResult> {
@@ -85,9 +93,29 @@ export class WorkflowRunner {
     const { workflow } = prepared;
     const stepResults: StepResult[] = [];
 
+    const resumeIndex = this.config.resumeFromStepIndex ?? -1;
+    const priorOutputs = this.config.priorStepOutputs ?? {};
+
     for (let i = 0; i < workflow.steps.length; i += 1) {
       const step = workflow.steps[i];
       if (step === undefined) {
+        continue;
+      }
+
+      // Resume mode: skip already-completed steps (unless noCache)
+      if (i <= resumeIndex && step.noCache !== true && Object.prototype.hasOwnProperty.call(priorOutputs, step.stepId)) {
+        const cachedResult: StepResult = {
+          stepId: step.stepId,
+          success: true,
+          output: priorOutputs[step.stepId],
+          durationMs: 0,
+          retryCount: 0,
+          startedAt: new Date().toISOString(),
+          completedAt: new Date().toISOString(),
+        };
+        const frozenCached = deepFreezeStepResult(cachedResult);
+        stepResults.push(frozenCached);
+        this.config.onStepComplete?.(step, frozenCached);
         continue;
       }
 

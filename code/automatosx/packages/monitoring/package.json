@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/monitoring",
-  "version": "14.0.1",
+  "version": "14.0.2",
   "description": "Dashboard visibility helpers for shared runtime traces",
   "type": "module",
   "publishConfig": {
@@ -18,7 +18,7 @@
     }
   },
   "dependencies": {
-    "@defai.digital/trace-store": "^14.0.1"
+    "@defai.digital/trace-store": "^14.0.2"
   },
   "engines": {
     "node": ">=22.5.0"

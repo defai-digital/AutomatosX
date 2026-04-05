@@ -324,9 +324,9 @@ describe('workflow adapter', () => {
     expect(artifactMarkdown).toContain('## Dispatch Outcome');
     expect(artifactMarkdown).toContain('- Status: failed');
     expect(artifactMarkdown).toContain('- Error: Workflow "architect" failed: guard blocked execution.');
-    expect(artifactMarkdown).toContain('- Guard: Runtime governance blocked step "run-skill". Trust state: implicit-local.');
-    expect(artifactMarkdown).toContain('- Guard tool: skill.run');
-    expect(artifactMarkdown).toContain('- Guard trust: implicit-local');
-    expect(artifactMarkdown).toContain('- Guard requires: trusted-id');
+    expect(artifactMarkdown).toContain('- Policy: Runtime governance blocked step "run-skill". Trust state: implicit-local.');
+    expect(artifactMarkdown).toContain('- Policy tool: skill.run');
+    expect(artifactMarkdown).toContain('- Policy trust: implicit-local');
+    expect(artifactMarkdown).toContain('- Policy requires: trusted-id');
   });
 });

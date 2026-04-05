@@ -3,11 +3,27 @@ import { createWorkflowDiscussionExecutor } from '../src/runtime-workflow-discus
 
 describe('runtime workflow discussion executor', () => {
   it('passes trace id, provider, and config through to the coordinator', async () => {
+    let observedRequest:
+      | {
+          traceId: string;
+          provider?: string;
+          config: {
+            pattern: string;
+            prompt: string;
+            providers: string[];
+            consensus: {
+              method: string;
+            };
+          };
+        }
+      | undefined;
     const executor = createWorkflowDiscussionExecutor(
       'workflow-trace-001',
       'claude',
       {
-        run: async (request) => ({
+        run: async (request) => {
+          observedRequest = request;
+          return {
           success: true,
           pattern: request.config.pattern,
           topic: request.config.prompt,
@@ -20,10 +36,12 @@ describe('runtime workflow discussion executor', () => {
           },
           totalDurationMs: 1,
           metadata: {
+            startedAt: '2026-03-27T00:00:00.000Z',
+            completedAt: '2026-03-27T00:00:00.001Z',
             traceId: request.traceId,
-            provider: request.provider,
           },
-        }),
+          };
+        },
       },
     );
 
@@ -47,7 +65,18 @@ describe('runtime workflow discussion executor', () => {
       participatingProviders: ['claude', 'openai'],
       metadata: {
         traceId: 'workflow-trace-001',
-        provider: 'claude',
+      },
+    });
+    expect(observedRequest).toMatchObject({
+      traceId: 'workflow-trace-001',
+      provider: 'claude',
+      config: {
+        pattern: 'quick',
+        prompt: 'Compare rollout options.',
+        providers: ['claude', 'openai'],
+        consensus: {
+          method: 'synthesis',
+        },
       },
     });
   });

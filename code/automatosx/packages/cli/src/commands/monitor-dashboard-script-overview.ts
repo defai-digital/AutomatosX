@@ -3,7 +3,7 @@ export const MONITOR_DASHBOARD_SCRIPT_OVERVIEW = `
 
     function renderFailedCallout(traces) {
       const failed = traces.filter(function(t) { return t.status === 'failed'; })
-        .sort(function(a, b) { return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(); })
+        .sort(function(a, b) { return (parseIsoTimestamp(b.startedAt) || 0) - (parseIsoTimestamp(a.startedAt) || 0); })
         .slice(0, 5);
       if (failed.length === 0) {
         return '<div class="healthy-callout">✓ All clear — no failed traces in the last ' + traces.length + ' runs.</div>';
@@ -18,7 +18,7 @@ export const MONITOR_DASHBOARD_SCRIPT_OVERVIEW = `
 
     function renderRecentActivity(traces) {
       const recent = traces.slice()
-        .sort(function(a, b) { return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(); })
+        .sort(function(a, b) { return (parseIsoTimestamp(b.startedAt) || 0) - (parseIsoTimestamp(a.startedAt) || 0); })
         .slice(0, 6);
       return renderSection(
         'Recent Activity',
@@ -223,6 +223,7 @@ export const MONITOR_DASHBOARD_SCRIPT_OVERVIEW = `
         + '</div><div class="section"><h2>Providers</h2>'
         + kvRow('Detected', (state.providers.detectedProviders || []).join(', ') || 'none')
         + kvRow('Enabled', (state.providers.enabledProviders || []).join(', ') || 'none')
+        + kvRow('Configured only', (state.providers.configuredButUnavailableProviders || []).join(', ') || 'none')
         + kvRow('Disabled', (state.providers.installedButDisabledProviders || []).join(', ') || 'none')
         + kvRow('Snapshot', state.providers.generatedAt ? timeAgo(state.providers.generatedAt) : 'unavailable')
         + '</div></div>';

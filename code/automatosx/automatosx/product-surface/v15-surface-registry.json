@@ -1,0 +1,92 @@
+{
+  "version": "15.0.0",
+  "status": "accepted",
+  "date": "2026-03-27",
+  "stable": {
+    "cli_workflows": [
+      "setup",
+      "ship",
+      "architect",
+      "audit",
+      "qa",
+      "release"
+    ],
+    "cli_support": [
+      "list",
+      "run",
+      "resume",
+      "trace",
+      "agent",
+      "discuss",
+      "review",
+      "policy",
+      "doctor",
+      "status",
+      "config"
+    ],
+    "built_in_agents": [
+      "architect",
+      "quality",
+      "bug-hunter",
+      "release-manager"
+    ],
+    "mcp_tools": [
+      "workflow_run",
+      "workflow_list",
+      "workflow_describe",
+      "trace_get",
+      "trace_list",
+      "trace_analyze",
+      "trace_by_session",
+      "trace_tree",
+      "agent_get",
+      "agent_list",
+      "agent_run",
+      "agent_recommend",
+      "discuss_run",
+      "discuss_quick",
+      "discuss_recursive",
+      "session_create",
+      "session_get",
+      "session_list",
+      "session_join",
+      "session_leave",
+      "session_complete",
+      "session_fail",
+      "review_analyze",
+      "review_list",
+      "guard_list",
+      "guard_apply",
+      "guard_check"
+    ]
+  },
+  "advanced": {
+    "cli_commands": [
+      "ability",
+      "bridge",
+      "call",
+      "cleanup",
+      "feedback",
+      "governance",
+      "history",
+      "iterate",
+      "mcp",
+      "memory",
+      "monitor",
+      "parallel",
+      "scaffold",
+      "semantic",
+      "session",
+      "skill",
+      "update"
+    ]
+  },
+  "explicit_decisions": {
+    "monitor": "advanced",
+    "bridge": "advanced_local_first",
+    "skill": "advanced_local_first",
+    "remote_bridge_install": "out_of_scope_for_v15",
+    "remote_skill_import": "out_of_scope_for_v15",
+    "distribution_model": "workspace_local_and_internal_first"
+  }
+}

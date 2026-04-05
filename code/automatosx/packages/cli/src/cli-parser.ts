@@ -67,6 +67,12 @@ const GLOBAL_FLAG_SPECS: Record<string, GlobalFlagSpec> = {
       options.quiet = true;
     },
   },
+  force: {
+    kind: 'boolean',
+    apply: (options) => {
+      options.force = true;
+    },
+  },
   format: {
     kind: 'string',
     apply: (options, value) => {
@@ -275,6 +281,7 @@ export function createDefaultOptions(): CLIOptions {
     outputDir: undefined,
     dryRun: false,
     quiet: false,
+    force: false,
   };
 }
 

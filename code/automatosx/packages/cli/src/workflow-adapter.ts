@@ -8,6 +8,7 @@ import {
   type StableWorkflowCatalogEntry,
 } from '@defai.digital/shared-runtime/catalog';
 import { z } from 'zod';
+import { writePrettyJsonFile } from './json-file-write.js';
 import { runCommand } from './commands/run.js';
 import type { CLIOptions, CommandResult } from './types.js';
 import { parseJsonObjectString } from './utils/validation.js';
@@ -551,8 +552,8 @@ async function writeWorkflowArtifacts(
   };
 
   await Promise.all([
-    writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8'),
-    writeFile(summaryPath, `${JSON.stringify(summary, null, 2)}\n`, 'utf8'),
+    writePrettyJsonFile(manifestPath, manifest),
+    writePrettyJsonFile(summaryPath, summary),
   ]);
 
   const artifactContents = await Promise.all(
@@ -732,18 +733,18 @@ function renderDispatchOutcomeSection(
   }
 
   if (guard !== undefined) {
-    lines.push(`- Guard: ${guard.summary}`);
+    lines.push(`- Policy: ${guard.summary}`);
     if (guard.toolName !== undefined) {
-      lines.push(`- Guard tool: ${guard.toolName}`);
+      lines.push(`- Policy tool: ${guard.toolName}`);
     }
     if (guard.trustState !== undefined) {
-      lines.push(`- Guard trust: ${guard.trustState}`);
+      lines.push(`- Policy trust: ${guard.trustState}`);
     }
     if (guard.requiredTrustStates !== undefined && guard.requiredTrustStates.length > 0) {
-      lines.push(`- Guard requires: ${guard.requiredTrustStates.join(', ')}`);
+      lines.push(`- Policy requires: ${guard.requiredTrustStates.join(', ')}`);
     }
     if (guard.sourceRef !== undefined) {
-      lines.push(`- Guard source: ${guard.sourceRef}`);
+      lines.push(`- Policy source: ${guard.sourceRef}`);
     }
   }
 

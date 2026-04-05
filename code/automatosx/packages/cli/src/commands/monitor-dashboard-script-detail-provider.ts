@@ -26,6 +26,7 @@ export const MONITOR_DASHBOARD_SCRIPT_DETAIL_PROVIDER = `
         'Workspace State',
         kvRow('Snapshot source', state.providers.source)
         + kvRow('Snapshot generated', state.providers.generatedAt ? timeAgo(state.providers.generatedAt) : 'unavailable')
+        + kvRow('Configured but unavailable', provider && provider.configuredButUnavailable ? 'yes' : 'no')
         + kvRow('Installed but disabled', provider && provider.installedButDisabled ? 'yes' : 'no'),
       ) + '</div>';
 

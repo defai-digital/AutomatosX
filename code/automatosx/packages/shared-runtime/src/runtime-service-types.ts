@@ -40,6 +40,12 @@ export interface RuntimeWorkflowRequest {
   model?: string;
   input?: Record<string, unknown>;
   surface?: TraceSurface;
+  /** When set, skip steps at index <= this value and replay cached outputs. */
+  resumeFromStepIndex?: number;
+  /** Cached step outputs from a prior run checkpoint, keyed by stepId. */
+  priorStepOutputs?: Record<string, unknown>;
+  /** Workflow hash from the checkpoint for drift detection. */
+  checkpointWorkflowHash?: string;
 }
 
 export interface RuntimeDiscussionRequest {
@@ -412,6 +418,12 @@ export interface RuntimeTraceAnalysis {
   };
   guard?: RuntimeTraceGuardSummary;
   error?: TraceRecord['error'];
+  /** Whether this trace can be resumed from its checkpoint. */
+  resumable?: boolean;
+  /** The workflow step index where the checkpoint was taken. */
+  checkpointStepIndex?: number;
+  /** The workflow hash stored in the checkpoint for drift detection. */
+  checkpointWorkflowHash?: string;
   findings: RuntimeTraceAnalysisFinding[];
 }
 

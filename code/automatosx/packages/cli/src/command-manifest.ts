@@ -9,7 +9,6 @@ import {
   discussCommand,
   feedbackCommand,
   governanceCommand,
-  guardCommand,
   helpCommand,
   historyCommand,
   initCommand,
@@ -30,8 +29,9 @@ import {
   statusCommand,
   traceCommand,
   updateCommand,
+  policyCommand,
 } from './commands/index.js';
-import { COMMAND_METADATA } from './command-metadata.js';
+import { COMMAND_METADATA, resolveCommandAlias } from './command-metadata.js';
 import { WORKFLOW_COMMAND_HANDLERS } from './commands/workflows.js';
 import type { CommandHandler } from './types.js';
 
@@ -67,7 +67,7 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
   scaffold: scaffoldCommand,
   trace: traceCommand,
   discuss: discussCommand,
-  guard: guardCommand,
+  policy: policyCommand,
   agent: agentCommand,
   mcp: mcpCommand,
   session: sessionCommand,
@@ -91,9 +91,9 @@ export const COMMAND_REGISTRY: Readonly<Record<string, CommandHandler>> = Object
 );
 
 export function getCommandManifestEntry(command: string): CommandManifestEntry | undefined {
-  return COMMAND_MANIFEST_BY_NAME.get(command);
+  return COMMAND_MANIFEST_BY_NAME.get(resolveCommandAlias(command));
 }
 
 export function getCommandHandler(command: string): CommandHandler | undefined {
-  return COMMAND_REGISTRY[command];
+  return COMMAND_REGISTRY[resolveCommandAlias(command)];
 }

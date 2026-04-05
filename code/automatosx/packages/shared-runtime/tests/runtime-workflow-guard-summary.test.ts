@@ -19,7 +19,9 @@ describe('runtime workflow guard summary', () => {
       ],
     } as Workflow;
     const result = {
+      workflowId: 'ship',
       success: false,
+      totalDurationMs: 1,
       stepResults: [
         {
           stepId: 'run-skill',
@@ -73,7 +75,9 @@ describe('runtime workflow guard summary', () => {
       ],
     } as Workflow;
     const result = {
+      workflowId: 'ship',
       success: false,
+      totalDurationMs: 0,
       stepResults: [],
       error: {
         code: 'WORKFLOW_GUARD_BLOCKED',
@@ -91,7 +95,7 @@ describe('runtime workflow guard summary', () => {
       blockedByRuntimeGovernance: false,
       guardId: 'enforce-step-budget',
       failedGates: ['budget'],
-      summary: 'Workflow step "review" was blocked by guard "enforce-step-budget". Failed gates: budget. Too many steps requested.',
+      summary: 'Workflow step "review" was blocked by policy "enforce-step-budget". Failed gates: budget. Too many steps requested.',
     });
   });
 });

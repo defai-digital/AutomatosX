@@ -11,12 +11,10 @@ export const MONITOR_DASHBOARD_SCRIPT_DETAIL_SESSION = `
       let html = renderDetailBackButton()
         + renderDetailHeader(session.task || '(no task)', session.sessionId, chipsHtml);
 
-      if (summary) {
-        html += renderSection('Summary', renderEscapedDetailBlock(summary));
-      }
+      html += renderSummarySection(summary);
 
       if (session.error && session.error.message) {
-        html += '<div class="error-block"><h3>Error</h3><div class="error-message">' + esc(session.error.message) + '</div></div>';
+        html += renderErrorCallout('Error', session.error.message);
       }
 
       const participantsBody = participants.length === 0
@@ -38,9 +36,7 @@ export const MONITOR_DASHBOARD_SCRIPT_DETAIL_SESSION = `
         { count: relatedTraces.length },
       );
 
-      if (session.metadata && Object.keys(session.metadata).length > 0) {
-        html += '<div class="section">' + collapsible('session-meta', 'Metadata', JSON.stringify(session.metadata, null, 2)) + '</div>';
-      }
+      html += renderMetadataSection('session-meta', session.metadata);
       return html;
     }
 `;

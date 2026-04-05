@@ -78,7 +78,7 @@ export const MONITOR_DASHBOARD_SCRIPT_ACTIONS = `
         .then(function(r) { return r.json(); })
         .then(function(result) {
           if (!result.success) throw new Error(result.error || 'Failed');
-          const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
+          const blob = new Blob([prettyJson(result.data)], { type: 'application/json' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;

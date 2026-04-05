@@ -21,7 +21,7 @@ export async function statusCommand(args: string[], options: CLIOptions): Promis
   const recentFailedTraces = status.recentFailedTraces.length > 0
     ? status.recentFailedTraces.flatMap((trace) => {
       const lines = [`- ${trace.traceId} ${trace.workflowId} ${trace.error?.message ?? 'Unknown error'}`];
-      const guardLine = formatRuntimeGuardSummaryLine(trace.metadata, '  guard:', 104);
+      const guardLine = formatRuntimeGuardSummaryLine(trace.metadata, '  policy:', 104);
       if (guardLine !== undefined) {
         lines.push(guardLine);
       }

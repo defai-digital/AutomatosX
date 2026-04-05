@@ -113,6 +113,7 @@ describe('governance surface parity', () => {
         detectedProviders: [],
         enabledProviders: [],
         installedButDisabledProviders: [],
+        configuredButUnavailableProviders: [],
       }),
       tempDir,
       undefined,

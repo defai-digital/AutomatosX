@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/shared-runtime",
-  "version": "14.0.1",
+  "version": "14.0.2",
   "description": "Shared workflow runtime service used by CLI and MCP surfaces",
   "type": "module",
   "publishConfig": {
@@ -31,10 +31,10 @@
     }
   },
   "dependencies": {
-    "@defai.digital/contracts": "^14.0.1",
-    "@defai.digital/state-store": "^14.0.1",
-    "@defai.digital/trace-store": "^14.0.1",
-    "@defai.digital/workflow-engine": "^14.0.1",
+    "@defai.digital/contracts": "^14.0.2",
+    "@defai.digital/state-store": "^14.0.2",
+    "@defai.digital/trace-store": "^14.0.2",
+    "@defai.digital/workflow-engine": "^14.0.2",
     "zod": "^3.25.76"
   },
   "engines": {

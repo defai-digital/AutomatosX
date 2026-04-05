@@ -17,9 +17,7 @@ export const MONITOR_DASHBOARD_SCRIPT_DETAIL_WORKFLOW = `
       let html = renderDetailBackButton()
         + renderDetailHeader(workflow.name || workflow.workflowId, workflow.workflowId, chipsHtml, 'mono');
 
-      if (workflow.description) {
-        html += renderSection('Summary', renderEscapedDetailBlock(workflow.description));
-      }
+      html += renderSummarySection(workflow.description);
 
       if (requiredInputs.length > 0 || optionalInputs.length > 0 || artifactNames.length > 0) {
         html += '<div class="columns">' + renderSection(

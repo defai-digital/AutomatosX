@@ -11,7 +11,7 @@ export { statusCommand } from './status.js';
 export { traceCommand } from './trace.js';
 export { discussCommand } from './discuss.js';
 export { feedbackCommand } from './feedback.js';
-export { guardCommand } from './guard.js';
+export { policyCommand, guardCommand } from './guard.js';
 export { resumeCommand } from './resume.js';
 export { agentCommand } from './agent.js';
 export { mcpCommand } from './mcp.js';

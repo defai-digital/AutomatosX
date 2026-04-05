@@ -55,6 +55,10 @@ export interface WorkflowRunnerConfig {
   stepGuardEngine?: StepGuardEngine | undefined;
   executionId?: string | undefined;
   agentId?: string | undefined;
+  /** When set, skip steps at index <= this value and inject cached outputs. */
+  resumeFromStepIndex?: number | undefined;
+  /** Cached step outputs from the prior run, keyed by stepId. */
+  priorStepOutputs?: Record<string, unknown> | undefined;
 }
 
 export interface PreparedWorkflow {

@@ -26,6 +26,7 @@ describe('runtime guard policy support', () => {
       policyId: 'stored-runtime',
       name: 'Stored Runtime',
       enabled: false,
+      updatedAt: '2026-03-27T00:00:00.000Z',
       metadata: {
         guardPolicy: {
           policyId: 'stored-runtime',
@@ -47,7 +48,7 @@ describe('runtime guard policy support', () => {
           ],
         },
       },
-    } as PolicyEntry;
+    };
     const stateStore = {
       listPolicies: async () => [storedPolicy],
     } as Pick<StateStore, 'listPolicies'> as StateStore;

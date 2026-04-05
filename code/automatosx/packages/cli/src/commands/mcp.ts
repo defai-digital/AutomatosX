@@ -4,6 +4,7 @@ import {
   resolveMcpSurfaceBasePath,
 } from '@defai.digital/mcp-server';
 import type { CLIOptions, CommandResult } from '../types.js';
+import { formatPrettyJsonBlock } from '../json-file-write.js';
 import { failure, success, usageError } from '../utils/formatters.js';
 import { parseOptionalJsonInput } from '../utils/validation.js';
 
@@ -37,7 +38,7 @@ export async function mcpCommand(args: string[], options: CLIOptions): Promise<C
           `MCP tool: ${tool.name}`,
           tool.description,
           '',
-          JSON.stringify(tool.inputSchema, null, 2),
+          formatPrettyJsonBlock(tool.inputSchema),
         ].join('\n'),
         tool,
       );

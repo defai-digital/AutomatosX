@@ -16,6 +16,7 @@ describe('runtime discussion coordinator', () => {
               provider: request.provider,
               content: `ok:${request.provider}`,
               latencyMs: 5,
+              mode: 'subprocess',
             },
           };
         },
@@ -66,6 +67,7 @@ describe('runtime discussion coordinator', () => {
               provider: request.provider,
               content: `ok:${request.provider}`,
               latencyMs: 25,
+              mode: 'subprocess',
             },
           };
         },

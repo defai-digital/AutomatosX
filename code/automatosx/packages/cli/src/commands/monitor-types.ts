@@ -16,6 +16,7 @@ export interface MonitorProviderSnapshot {
   detectedProviders: string[];
   enabledProviders: string[];
   installedButDisabledProviders: string[];
+  configuredButUnavailableProviders: string[];
 }
 
 export type RuntimeService = ReturnType<typeof createRuntime>;

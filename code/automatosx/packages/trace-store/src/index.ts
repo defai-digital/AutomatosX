@@ -32,6 +32,13 @@ export interface TraceRecord {
     failedStepId?: string;
   };
   metadata?: Record<string, unknown>;
+  checkpoint?: {
+    lastCompletedStepIndex: number;
+    lastCompletedStepId: string;
+    checkpointedAt: string;
+    workflowHash: string;
+    stepOutputs: Record<string, unknown>;
+  };
 }
 
 export interface TraceStatusCounts {

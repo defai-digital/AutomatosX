@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/cli",
-  "version": "14.0.1",
+  "version": "14.0.2",
   "description": "AutomatosX v14 CLI — ax command-line tool",
   "type": "module",
   "publishConfig": {
@@ -20,11 +20,11 @@
     "node": ">=22.5.0"
   },
   "dependencies": {
-    "@defai.digital/contracts": "^14.0.1",
-    "@defai.digital/mcp-server": "^14.0.1",
-    "@defai.digital/shared-runtime": "^14.0.1",
-    "@defai.digital/state-store": "^14.0.1",
-    "@defai.digital/trace-store": "^14.0.1",
+    "@defai.digital/contracts": "^14.0.2",
+    "@defai.digital/mcp-server": "^14.0.2",
+    "@defai.digital/shared-runtime": "^14.0.2",
+    "@defai.digital/state-store": "^14.0.2",
+    "@defai.digital/trace-store": "^14.0.2",
     "zod": "^3.25.76"
   },
   "scripts": {

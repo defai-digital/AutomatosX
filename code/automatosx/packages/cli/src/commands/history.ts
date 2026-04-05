@@ -116,7 +116,10 @@ export async function historyCommand(args: string[], options: CLIOptions): Promi
       if (t.error?.message !== undefined) {
         lines.push(`   Error:    ${t.error.message}`);
       }
-      const verboseGuard = formatRuntimeGuardSummaryLine(t.metadata, '   Guard:   ', 108);
+      if (t.status === 'failed' && t.checkpoint !== undefined && t.checkpoint.lastCompletedStepIndex >= 0) {
+        lines.push(`   Resume:   ax resume ${t.traceId} (checkpoint at step ${t.checkpoint.lastCompletedStepIndex + 1})`);
+      }
+      const verboseGuard = formatRuntimeGuardSummaryLine(t.metadata, '   Policy:  ', 108);
       if (verboseGuard !== undefined) {
         lines.push(verboseGuard);
       }
@@ -129,13 +132,14 @@ export async function historyCommand(args: string[], options: CLIOptions): Promi
       const durationMs = t.completedAt !== undefined
         ? Date.parse(t.completedAt) - Date.parse(t.startedAt)
         : undefined;
+      const resumable = t.status === 'failed' && t.checkpoint !== undefined && t.checkpoint.lastCompletedStepIndex >= 0;
       const status   = formatStatus(t.status);
       const workflow = truncate(t.workflowId, 20).padEnd(20);
       const started  = formatAge(t.startedAt).padEnd(12);
       const duration = formatDuration(durationMs).padEnd(8);
       const steps    = String(t.stepResults.length).padEnd(5);
-      lines.push(`${status}  ${workflow}  ${started}  ${duration}  ${steps}`);
-      const compactGuard = formatRuntimeGuardSummaryLine(t.metadata, '        guard:', 96);
+      lines.push(`${status}  ${workflow}  ${started}  ${duration}  ${steps}${resumable ? '  [R]' : ''}`);
+      const compactGuard = formatRuntimeGuardSummaryLine(t.metadata, '        policy:', 96);
       if (compactGuard !== undefined) {
         lines.push(compactGuard);
       }

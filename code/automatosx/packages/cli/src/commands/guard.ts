@@ -9,7 +9,7 @@ import {
   asStringValue,
 } from '../utils/validation.js';
 
-export async function guardCommand(args: string[], options: CLIOptions): Promise<CommandResult> {
+export async function policyCommand(args: string[], options: CLIOptions): Promise<CommandResult> {
   const subcommand = args[0] ?? 'list';
   const runtime = createRuntime(options);
 
@@ -17,11 +17,11 @@ export async function guardCommand(args: string[], options: CLIOptions): Promise
     case 'list': {
       const policies = await runtime.listGuardPolicies();
       if (policies.length === 0) {
-        return success('No guard policies available.', policies);
+        return success('No trust policies available.', policies);
       }
 
       return success([
-        'Guard policies:',
+        'Trust policies:',
         ...policies.map((policy) => `- ${policy.policyId}: ${policy.name} (${policy.source}, ${policy.enabled ? 'enabled' : 'disabled'}, priority=${policy.priority})`),
       ].join('\n'), policies);
     }
@@ -32,7 +32,7 @@ export async function guardCommand(args: string[], options: CLIOptions): Promise
       }
 
       const policy = await runtime.applyGuardPolicy(parsed.value);
-      return success(`Guard policy applied: ${policy.policyId}`, policy);
+      return success(`Trust policy applied: ${policy.policyId}`, policy);
     }
     case 'check': {
       const parsed = parseGuardCheckInput(options.input, options.agent);
@@ -42,14 +42,14 @@ export async function guardCommand(args: string[], options: CLIOptions): Promise
 
       const result = await runtime.checkGuards(parsed.value);
       return success([
-        `Guard check: ${result.blocked ? 'blocked' : 'passed'}`,
+        `Policy check: ${result.blocked ? 'blocked' : 'passed'}`,
         `Policies: ${result.policyIds.join(', ')}`,
         `Position: ${result.position}`,
         ...result.results.map((entry) => `- ${entry.guardId}: ${entry.status} (${entry.summary})`),
       ].join('\n'), result);
     }
     default:
-      return usageError('ax guard [list|apply|check]');
+      return usageError('ax policy [list|apply|check]');
   }
 }
 
@@ -66,16 +66,16 @@ function parseGuardApplyInput(policyIdArg: string | undefined, input: string | u
     const definition = parsed.value.definition as StepGuardPolicy | undefined;
     const enabled = asOptionalBoolean(parsed.value.enabled);
     if (parsed.value.enabled !== undefined && enabled === undefined) {
-      return { value: {}, error: 'Guard apply input requires "enabled" to be a boolean.' };
+      return { value: {}, error: 'Policy apply input requires "enabled" to be a boolean.' };
     }
     if (definition === undefined && policyId === undefined) {
-      return { value: {}, error: 'Guard apply input requires "policyId" or "definition".' };
+      return { value: {}, error: 'Policy apply input requires "policyId" or "definition".' };
     }
     return { value: { policyId, definition, enabled } };
   }
 
   if (policyIdArg === undefined || policyIdArg.length === 0) {
-    return { value: {}, error: 'Usage: ax guard apply <policy-id> or --input <json-object>' };
+    return { value: {}, error: 'Usage: ax policy apply <policy-id> or --input <json-object>' };
   }
 
   return { value: { policyId: policyIdArg } };
@@ -99,7 +99,7 @@ function parseGuardCheckInput(input: string | undefined, fallbackAgent: string |
   error?: string;
 } {
   if (input === undefined) {
-    return { value: { stepId: '', stepType: '' }, error: 'Usage: ax guard check --input <json-object>' };
+    return { value: { stepId: '', stepType: '' }, error: 'Usage: ax policy check --input <json-object>' };
   }
 
   const parsed = parseJsonInput(input);
@@ -110,7 +110,7 @@ function parseGuardCheckInput(input: string | undefined, fallbackAgent: string |
   const stepId = asStringValue(parsed.value.stepId);
   const stepType = asStringValue(parsed.value.stepType);
   if (stepId === undefined || stepType === undefined) {
-    return { value: { stepId: '', stepType: '' }, error: 'Guard check input requires "stepId" and "stepType".' };
+    return { value: { stepId: '', stepType: '' }, error: 'Policy check input requires "stepId" and "stepType".' };
   }
   const stepIndex = asOptionalInteger(parsed.value.stepIndex, 'stepIndex', { min: 0 });
   if (stepIndex.error !== undefined) {
@@ -138,3 +138,6 @@ function parseGuardCheckInput(input: string | undefined, fallbackAgent: string |
     },
   };
 }
+
+/** @deprecated Use policyCommand directly. Kept for backward compatibility. */
+export const guardCommand = policyCommand;

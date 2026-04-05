@@ -133,6 +133,13 @@ export async function resumeCommand(args: string[], options: CLIOptions): Promis
     return failure(`Trace ${sourceTraceId} cannot be resumed because no workflow directory is available.`);
   }
 
+  // Extract checkpoint data for true resumption — only for failed traces
+  const checkpoint = trace.checkpoint;
+  const hasCheckpoint = checkpoint !== undefined
+    && checkpoint.lastCompletedStepIndex >= 0
+    && trace.status === 'failed';
+  const forceRerun = options.force === true;
+
   const result = await runtime.runWorkflow({
     workflowId: trace.workflowId,
     traceId: resumedTraceId,
@@ -143,13 +150,22 @@ export async function resumeCommand(args: string[], options: CLIOptions): Promis
     model: asOptionalString(traceMetadata?.model) ?? 'v14-runtime-bridge',
     input: traceInput,
     surface: 'cli',
+    // Pass checkpoint resume params when available
+    ...(hasCheckpoint && !forceRerun ? {
+      resumeFromStepIndex: checkpoint.lastCompletedStepIndex,
+      priorStepOutputs: checkpoint.stepOutputs,
+      checkpointWorkflowHash: checkpoint.workflowHash,
+    } : {}),
   });
 
   if (!result.success) {
     return failure(`Resume failed for ${sourceTraceId}: ${result.error?.message ?? 'Unknown workflow error'}`, result);
   }
 
-  return success(`Resumed trace ${sourceTraceId} as ${result.traceId}.`, result);
+  const resumeMsg = hasCheckpoint && !forceRerun
+    ? `Resumed trace ${sourceTraceId} from checkpoint (step ${String(checkpoint.lastCompletedStepIndex + 1)}) as ${result.traceId}.`
+    : `Resumed trace ${sourceTraceId} as ${result.traceId}.`;
+  return success(resumeMsg, result);
 }
 
 function normalizeReviewFocus(value: unknown): 'all' | 'security' | 'correctness' | 'maintainability' | undefined {

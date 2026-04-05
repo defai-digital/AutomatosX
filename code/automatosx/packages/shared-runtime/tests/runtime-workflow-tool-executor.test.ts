@@ -3,6 +3,7 @@ import { rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
+import type { TraceRecord } from '@defai.digital/trace-store';
 import { createWorkflowToolExecutor } from '../src/runtime-workflow-tool-executor.js';
 
 const SHARED_RUNTIME_PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -50,7 +51,7 @@ describe('runtime workflow tool executor', () => {
       surface: 'cli',
       createTraceId: () => 'child-trace',
       traceStore: {
-        upsertTrace: async (trace) => trace,
+        upsertTrace: async (trace: TraceRecord) => trace,
       } as never,
       stateStore: {} as never,
       runAgent: async () => {
@@ -93,7 +94,7 @@ describe('runtime workflow tool executor', () => {
       surface: 'cli',
       createTraceId: () => 'child-trace',
       traceStore: {
-        upsertTrace: async (trace) => trace,
+        upsertTrace: async (trace: TraceRecord) => trace,
       } as never,
       stateStore: {} as never,
       runAgent: async () => {

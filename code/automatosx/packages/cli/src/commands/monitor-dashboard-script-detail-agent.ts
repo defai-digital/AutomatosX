@@ -63,9 +63,7 @@ export const MONITOR_DASHBOARD_SCRIPT_DETAIL_AGENT = `
         html += renderSection('Avoid This For', renderEscapedDetailBlocks(notFor), { count: notFor.length });
       }
 
-      if (agent.metadata && Object.keys(agent.metadata).length > 0) {
-        html += '<div class="section">' + collapsible('agent-meta', 'Metadata', JSON.stringify(agent.metadata, null, 2)) + '</div>';
-      }
+      html += renderMetadataSection('agent-meta', agent.metadata);
       return html;
     }
 `;

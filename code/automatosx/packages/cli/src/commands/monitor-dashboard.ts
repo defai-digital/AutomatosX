@@ -1,14 +1,8 @@
 import { WORKFLOW_PRIMARY_EXAMPLES } from '../command-metadata.js';
+import { serializeJsonForInlineScript } from '../json-file-write.js';
 import type { MonitorProviderSnapshot } from './monitor-types.js';
 import { MONITOR_DASHBOARD_STYLES } from './monitor-dashboard-style.js';
 import { buildDashboardScriptTag, escapeHtml } from './monitor-dashboard-script.js';
-
-function serializeForInlineScript(value: unknown): string {
-  return JSON.stringify(value)
-    .replaceAll('<', '\\u003c')
-    .replaceAll('>', '\\u003e')
-    .replaceAll('&', '\\u0026');
-}
 
 export { escapeHtml };
 
@@ -24,8 +18,8 @@ export function buildDashboardHtml(data: {
   workflows: unknown[];
   providers: MonitorProviderSnapshot;
 }): string {
-  const serializedState = serializeForInlineScript(data);
-  const serializedWorkflowPrimaryExamples = serializeForInlineScript(WORKFLOW_PRIMARY_EXAMPLES);
+  const serializedState = serializeJsonForInlineScript(data);
+  const serializedWorkflowPrimaryExamples = serializeJsonForInlineScript(WORKFLOW_PRIMARY_EXAMPLES);
 
   return `<!DOCTYPE html>
 <html lang="en">

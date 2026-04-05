@@ -275,7 +275,7 @@ export const TOOL_DEFINITIONS: McpToolDefinition[] = [
   },
   {
     name: 'governance_get',
-    description: 'Return the shared runtime governance aggregate, including runtime guard blocks and denied imported skills.',
+    description: 'Return the shared runtime governance aggregate, including runtime policy blocks and denied imported skills.',
     inputSchema: objectSchema({
       basePath: { type: 'string' },
       limit: { type: 'integer' },
@@ -605,12 +605,12 @@ export const TOOL_DEFINITIONS: McpToolDefinition[] = [
   },
   {
     name: 'guard_list',
-    description: 'List available workflow guard policies.',
+    description: 'List available trust policies.',
     inputSchema: objectSchema({}),
   },
   {
     name: 'guard_apply',
-    description: 'Apply a built-in or custom guard policy.',
+    description: 'Apply a built-in or custom trust policy.',
     inputSchema: objectSchema({
       policyId: { type: 'string' },
       definition: objectSchema({}, [], true),
@@ -619,7 +619,7 @@ export const TOOL_DEFINITIONS: McpToolDefinition[] = [
   },
   {
     name: 'guard_check',
-    description: 'Evaluate guard policies against a step context.',
+    description: 'Evaluate trust policies against a step context.',
     inputSchema: objectSchema({
       policyId: { type: 'string' },
       position: { type: 'string', enum: ['before', 'after'] },
@@ -805,7 +805,7 @@ export const TOOL_DEFINITIONS: McpToolDefinition[] = [
   },
   {
     name: 'scaffold_domain',
-    description: 'Generate a full domain package (types, service, tests, guard policy).',
+    description: 'Generate a full domain package (types, service, tests, trust policy).',
     inputSchema: objectSchema({
       name: { type: 'string' },
       scope: { type: 'string' },
@@ -817,7 +817,7 @@ export const TOOL_DEFINITIONS: McpToolDefinition[] = [
   },
   {
     name: 'scaffold_guard',
-    description: 'Generate a guard policy YAML file.',
+    description: 'Generate a trust policy YAML file.',
     inputSchema: objectSchema({
       policyId: { type: 'string' },
       domain: { type: 'string' },

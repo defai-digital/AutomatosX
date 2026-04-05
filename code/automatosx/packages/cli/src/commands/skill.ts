@@ -1,4 +1,5 @@
 import type { CLIOptions, CommandResult } from '../types.js';
+import { formatPrettyJsonBlock } from '../json-file-write.js';
 import {
   discoverSkillDefinitions,
   exportSkillDocument,
@@ -218,7 +219,7 @@ function formatSkillInspect(entry: SkillLoadSuccess): string {
     `Dispatch: ${entry.definition.dispatch}`,
     `Source: ${entry.sourceKind}`,
     '',
-    JSON.stringify(entry.definition, null, 2),
+    formatPrettyJsonBlock(entry.definition),
   ].join('\n');
 }
 

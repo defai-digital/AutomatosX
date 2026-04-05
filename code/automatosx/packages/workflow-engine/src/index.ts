@@ -1,5 +1,11 @@
 export { WorkflowRunner, createWorkflowRunner } from './runner.js';
 export {
+  computeWorkflowHash,
+  validateCheckpoint,
+  isCheckpointOrdered,
+  buildCheckpointRecord,
+} from './checkpoint.js';
+export {
   validateWorkflow,
   prepareWorkflow,
   WorkflowValidationError,
@@ -87,4 +93,5 @@ export type {
   GuardCheckStatus,
   StageProgressEvent,
   StageProgressStatus,
+  CheckpointRecord,
 } from '@defai.digital/contracts';

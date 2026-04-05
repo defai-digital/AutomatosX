@@ -5,6 +5,7 @@ import { getCommandHelp } from './cli-help.js';
 import { runIterativeHandler } from './cli-iterate.js';
 import { parseCommand } from './cli-parser.js';
 import { getCommandHandler } from './command-manifest.js';
+import { formatPrettyJson } from './json-file-write.js';
 import type { CLIOptions, CommandResult, ParsedCommand } from './types.js';
 import { failure, success } from './utils/formatters.js';
 
@@ -40,12 +41,12 @@ export async function executeParsedCli(parsed: ParsedCommand): Promise<CommandRe
 
 export function renderCommandResult(result: CommandResult, options: CLIOptions): string {
   if (options.format === 'json') {
-    return `${JSON.stringify({
+    return formatPrettyJson({
       success: result.success,
       message: result.message,
       data: result.data,
       exitCode: result.exitCode,
-    }, null, 2)}\n`;
+    });
   }
 
   if (result.message !== undefined) {
@@ -53,7 +54,7 @@ export function renderCommandResult(result: CommandResult, options: CLIOptions):
   }
 
   if (result.data !== undefined) {
-    return `${JSON.stringify(result.data, null, 2)}\n`;
+    return formatPrettyJson(result.data);
   }
 
   return '';

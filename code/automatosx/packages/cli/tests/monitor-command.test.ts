@@ -97,6 +97,7 @@ function createMonitorState(): MonitorApiState {
       detectedProviders: ['claude'],
       enabledProviders: ['claude'],
       installedButDisabledProviders: [],
+      configuredButUnavailableProviders: [],
     },
   };
 }
@@ -279,14 +280,30 @@ describe('monitor command helpers', () => {
     expect(context.normalizeTab('traces')).toBe('activity');
   });
 
+  it('renders configured-but-unavailable providers as not installed instead of enabled', () => {
+    const state = createMonitorState();
+    state.providers.enabledProviders = ['claude'];
+    state.providers.detectedProviders = ['claude'];
+    state.providers.configuredButUnavailableProviders = ['cursor'];
+
+    const context = executeDashboardScript(buildDashboardHtml(state));
+    context.switchTab('providers');
+
+    const html = context.document.getElementById('app').innerHTML;
+    expect(html).toContain('cursor');
+    expect(html).toContain('not installed');
+    expect(html).not.toContain('cursor <span class="trace-id-short">(default)</span>');
+  });
+
   it('paginates runs in the activity tab and keeps page navigation client-side', () => {
     const state = createMonitorState();
+    const now = Date.now();
     state.traces = Array.from({ length: 30 }, (_, index) => ({
       traceId: `trace-${String(index + 1).padStart(3, '0')}`,
       workflowId: `workflow-${String(index + 1).padStart(2, '0')}`,
       surface: 'cli',
       status: index === 0 ? 'running' : 'completed',
-      startedAt: new Date(Date.UTC(2026, 2, 24, 12, 0, 0) - (index * 1000)).toISOString(),
+      startedAt: new Date(now - (index * 1000)).toISOString(),
       stepResults: [],
     }));
 
@@ -512,13 +529,15 @@ describe('monitor command helpers', () => {
 
   it('renders readable labels for MCP tool traces in runs and trace detail views', async () => {
     const state = createMonitorState();
+    const recentStart = new Date(Date.now() - 60_000).toISOString();
+    const recentEnd = new Date(Date.now() - 55_000).toISOString();
     state.traces = [{
       traceId: 'trace-mcp-tool-1',
       workflowId: 'mcp.tool.memory_store',
       surface: 'mcp',
       status: 'completed',
-      startedAt: '2026-03-24T12:00:00.000Z',
-      completedAt: '2026-03-24T12:00:05.000Z',
+      startedAt: recentStart,
+      completedAt: recentEnd,
       stepResults: [],
       input: {
         namespace: 'ops',
@@ -558,13 +577,15 @@ describe('monitor command helpers', () => {
 
   it('renders runtime governance summaries in trace detail views', async () => {
     const state = createMonitorState();
+    const recentStart = new Date(Date.now() - 60_000).toISOString();
+    const recentEnd = new Date(Date.now() - 58_000).toISOString();
     state.traces = [{
       traceId: 'trace-guard-1',
       workflowId: 'workflow-skill-trust',
       surface: 'cli',
       status: 'failed',
-      startedAt: '2026-03-24T12:00:00.000Z',
-      completedAt: '2026-03-24T12:00:02.000Z',
+      startedAt: recentStart,
+      completedAt: recentEnd,
       stepResults: [{
         stepId: 'run-skill',
         success: false,
@@ -603,15 +624,115 @@ describe('monitor command helpers', () => {
     });
 
     context.switchTab('activity');
-    expect(context.document.getElementById('app').innerHTML).toContain('Guard: Runtime governance blocked step');
+    expect(context.document.getElementById('app').innerHTML).toContain('Policy: Runtime governance blocked step');
 
     await context.openTrace('trace-guard-1', false);
     const html = context.document.getElementById('app').innerHTML;
-    expect(html).toContain('Guard');
+    expect(html).toContain('Policy');
     expect(html).toContain('Runtime governance blocked step &quot;run-skill&quot;');
     expect(html).toContain('Tool: skill.run');
     expect(html).toContain('Trust state: implicit-local');
     expect(html).toContain('Required trust states: trusted-id');
+  });
+
+  it('renders provider chips in trace detail views from trace input metadata, not only metadata.provider', async () => {
+    const state = createMonitorState();
+    state.traces = [{
+      traceId: 'trace-provider-input-1',
+      workflowId: 'parallel.run',
+      surface: 'cli',
+      status: 'completed',
+      startedAt: '2026-03-24T12:00:00.000Z',
+      completedAt: '2026-03-24T12:00:04.000Z',
+      stepResults: [],
+      input: {
+        providers: ['claude', 'gemini'],
+        task: 'Compare model outputs',
+      },
+      metadata: {
+        summary: 'Compare model outputs across providers.',
+      },
+    }];
+
+    const context = executeDashboardScript(buildDashboardHtml(state), {
+      fetch: async (url: string) => {
+        if (url.startsWith('/api/traces/')) {
+          return {
+            ok: true,
+            json: async () => ({ success: true, data: state.traces[0] }),
+          };
+        }
+        return {
+          ok: true,
+          json: async () => ({ success: true, data: [] }),
+        };
+      },
+    });
+
+    await context.openTrace('trace-provider-input-1', false);
+    const html = context.document.getElementById('app').innerHTML;
+    expect(html).toContain('Providers: <strong>claude, gemini</strong>');
+    expect(html).toContain('Compare model outputs across providers.');
+  });
+
+  it('renders trace lists and detail views without leaking invalid timestamp text', async () => {
+    const state = createMonitorState();
+    const recentStart = new Date(Date.now() - 60_000).toISOString();
+    state.traces = [{
+      traceId: 'trace-invalid-time-1',
+      workflowId: 'ship',
+      surface: 'cli',
+      status: 'failed',
+      startedAt: recentStart,
+      completedAt: 'also-not-a-real-date',
+      stepResults: [{
+        stepId: 'collect',
+        success: false,
+        durationMs: 150,
+        retryCount: 0,
+        error: 'provider timeout',
+        startedAt: 'still-not-a-date',
+      }],
+      error: {
+        code: 'STEP_FAILED',
+        message: 'provider timeout',
+        failedStepId: 'collect',
+      },
+      input: {
+        provider: 'claude',
+      },
+      metadata: {
+        summary: 'Bad timestamp regression case.',
+      },
+    }];
+
+    const context = executeDashboardScript(buildDashboardHtml(state), {
+      fetch: async (url: string) => {
+        if (url.startsWith('/api/traces/')) {
+          return {
+            ok: true,
+            json: async () => ({ success: true, data: state.traces[0] }),
+          };
+        }
+        return {
+          ok: true,
+          json: async () => ({ success: true, data: [] }),
+        };
+      },
+    });
+
+    context.switchTab('activity');
+    const activityHtml = context.document.getElementById('app').innerHTML;
+    expect(activityHtml).not.toContain('NaN');
+    expect(activityHtml).not.toContain('Invalid Date');
+    expect(activityHtml).toContain('trace-invalid');
+
+    await context.openTrace('trace-invalid-time-1', false);
+    const detailHtml = context.document.getElementById('app').innerHTML;
+    expect(detailHtml).not.toContain('NaN');
+    expect(detailHtml).not.toContain('Invalid Date');
+    expect(detailHtml).toContain('Provider: <strong>claude</strong>');
+    expect(detailHtml).toContain('Error');
   });
 
   it('renders runtime governance aggregates in the overview tab', () => {
@@ -787,6 +908,7 @@ describe('monitor command helpers', () => {
       detectedProviders: ['claude'],
       enabledProviders: ['claude'],
       installedButDisabledProviders: ['grok'],
+      configuredButUnavailableProviders: [],
     });
   });
 
@@ -799,6 +921,40 @@ describe('monitor command helpers', () => {
       detectedProviders: [],
       enabledProviders: [],
       installedButDisabledProviders: [],
+      configuredButUnavailableProviders: [],
+    });
+  });
+
+  it('salvages valid provider entries when cached snapshot files contain malformed entries', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+    const automatosxDir = join(tempDir, '.automatosx');
+    mkdirSync(automatosxDir, { recursive: true });
+
+    await writeFile(join(automatosxDir, 'environment.json'), `${JSON.stringify({
+      generatedAt: '2026-03-24T12:00:00.000Z',
+      providers: [
+        { providerId: 'claude', cli: 'claude', installed: true },
+        { providerId: 42, cli: 'broken', installed: true },
+        'bad-entry',
+      ],
+    }, null, 2)}\n`, 'utf8');
+    await writeFile(join(automatosxDir, 'providers.json'), `${JSON.stringify({
+      providers: [
+        { providerId: 'claude', enabled: true, installed: true },
+        { providerId: 'grok', enabled: false, installed: true },
+        { providerId: 'gemini', enabled: 'yes', installed: true },
+        null,
+      ],
+    }, null, 2)}\n`, 'utf8');
+
+    await expect(readCachedProviderSnapshot(tempDir)).resolves.toEqual({
+      source: 'cached',
+      generatedAt: '2026-03-24T12:00:00.000Z',
+      detectedProviders: ['claude'],
+      enabledProviders: ['claude'],
+      installedButDisabledProviders: ['grok', 'gemini'],
+      configuredButUnavailableProviders: [],
     });
   });
 

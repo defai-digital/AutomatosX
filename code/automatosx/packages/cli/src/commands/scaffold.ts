@@ -2,12 +2,12 @@
  * Scaffold Command
  *
  * Generate contract-first project components: Zod schemas, invariant docs,
- * domain packages, and guard policies.
+ * domain packages, and trust policies.
  *
  * Usage:
  *   ax scaffold contract <name>           Generate Zod schema + invariants
  *   ax scaffold domain <name>             Generate full domain package
- *   ax scaffold guard <policy-id>         Generate guard policy YAML
+ *   ax scaffold policy <policy-id>        Generate trust policy YAML
  *   ax scaffold project <name> -m <domain> Generate full project from template
  */
 
@@ -116,11 +116,11 @@ cancelled → (terminal)
 }
 
 function generateGuardPolicyTemplate(policyId: string, domain: string, radius: number, gates: string[]): string {
-  return `# ${toPascalCase(domain)} Domain Guard Policy
+  return `# ${toPascalCase(domain)} Domain Trust Policy
 
 policy_id: ${policyId}
 
-description: Guard policy for ${domain} domain development.
+description: Trust policy for ${domain} domain development.
 
 allowed_paths:
   - packages/contracts/src/${domain}/**
@@ -264,7 +264,7 @@ function handleContract(name: string, opts: { description?: string; output?: str
   );
 }
 
-function handleDomain(name: string, opts: { scope?: string; output?: string; noTests?: boolean; noGuard?: boolean; dryRun: boolean }): CommandResult {
+function handleDomain(name: string, opts: { scope?: string; output?: string; noTests?: boolean; noPolicy?: boolean; dryRun: boolean }): CommandResult {
   const scope    = opts.scope ?? SCAFFOLD_SCOPE_DEFAULT;
   const domainDir = opts.output ?? `packages/core/${name}-domain`;
   const files: FileRecord[] = [];
@@ -277,7 +277,7 @@ function handleDomain(name: string, opts: { scope?: string; output?: string; noT
   if (!opts.noTests) {
     writeScaffoldFile(`tests/contract/${name}.test.ts`, generateContractTest(name), opts.dryRun, files);
   }
-  if (!opts.noGuard) {
+  if (!opts.noPolicy) {
     writeScaffoldFile(
       `packages/guard/policies/${name}-development.yaml`,
       generateGuardPolicyTemplate(`${name}-development`, name, GUARD_RADIUS_DEFAULT, [...GUARD_GATES_DEFAULT]),
@@ -293,7 +293,7 @@ function handleDomain(name: string, opts: { scope?: string; output?: string; noT
   );
 }
 
-function handleGuard(policyId: string, opts: { domain?: string; radius?: number; gates?: string; dryRun: boolean }): CommandResult {
+function handlePolicy(policyId: string, opts: { domain?: string; radius?: number; gates?: string; dryRun: boolean }): CommandResult {
   const domain = opts.domain ?? policyId.replace(/-development$/, '');
   const radius = opts.radius ?? GUARD_RADIUS_DEFAULT;
   const gates  = opts.gates ? opts.gates.split(',').map((g) => g.trim()) : [...GUARD_GATES_DEFAULT];
@@ -308,7 +308,7 @@ function handleGuard(policyId: string, opts: { domain?: string; radius?: number;
 
   const verb = opts.dryRun ? 'Would create' : 'Created';
   return success(
-    `${verb} guard policy "${policyId}":\n${files.map((f) => `  ${f.action}: ${f.path}`).join('\n')}`,
+    `${verb} policy "${policyId}":\n${files.map((f) => `  ${f.action}: ${f.path}`).join('\n')}`,
     { policyId, domain, files, dryRun: opts.dryRun },
   );
 }
@@ -338,7 +338,7 @@ export async function scaffoldCommand(args: string[], options: CLIOptions): Prom
       'Subcommands:\n' +
       '  contract <name>   Generate Zod schema + invariants doc\n' +
       '  domain <name>     Generate full domain package\n' +
-      '  guard <policy-id> Generate guard policy YAML\n\n' +
+      '  policy <policy-id> Generate trust policy YAML\n\n' +
       'Options:\n' +
       '  -d, --description <desc>  Description (contract/domain)\n' +
       '  -o, --output <path>       Output directory\n' +
@@ -346,7 +346,7 @@ export async function scaffoldCommand(args: string[], options: CLIOptions): Prom
       '  -r, --radius <n>          Change radius limit (default: 3)\n' +
       '  -g, --gates <gates>       Comma-separated gate names\n' +
       '  --no-tests                Skip test scaffold\n' +
-      '  --no-guard                Skip guard policy\n' +
+      '  --no-policy               Skip trust policy\n' +
       '  --dry-run                 Preview without writing files',
     );
   }
@@ -375,15 +375,16 @@ export async function scaffoldCommand(args: string[], options: CLIOptions): Prom
         scope:   pickFlag(rest, '-s', '--scope'),
         output:  pickFlag(rest, '-o', '--output'),
         noTests: rest.includes('--no-tests'),
-        noGuard: rest.includes('--no-guard'),
+        noPolicy: rest.includes('--no-policy'),
         dryRun,
       });
     }
 
+    case 'policy':
     case 'guard': {
-      if (name === undefined) return failure('Usage: ax scaffold guard <policy-id> [options]');
+      if (name === undefined) return failure('Usage: ax scaffold policy <policy-id> [options]');
       const radiusRaw = pickFlag(rest, '-r', '--radius');
-      return handleGuard(name, {
+      return handlePolicy(name, {
         domain: pickFlag(rest, '-m', '--domain', '-d', '--description'),
         radius: radiusRaw !== undefined ? parseInt(radiusRaw, 10) : undefined,
         gates:  pickFlag(rest, '-g', '--gates'),
@@ -393,7 +394,7 @@ export async function scaffoldCommand(args: string[], options: CLIOptions): Prom
 
     default:
       return failure(
-        `Unknown subcommand: "${subcommand}"\nAvailable: contract, domain, guard\nRun "ax scaffold help" for usage.`,
+        `Unknown subcommand: "${subcommand}"\nAvailable: contract, domain, policy\nRun "ax scaffold help" for usage.`,
       );
   }
 }

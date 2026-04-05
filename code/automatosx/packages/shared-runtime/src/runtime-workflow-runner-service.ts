@@ -136,7 +136,41 @@ export function createRuntimeWorkflowRunnerService(
       const startedAt = new Date().toISOString();
       const workflowHash = computeWorkflowHash(workflow);
 
-      // Drift detection: if resuming with a checkpoint hash, verify workflow hasn't changed
+      // Resume safety: if the caller provided any cached step data, they must
+      // also provide the workflow hash from that checkpoint so we can run the
+      // drift check. Otherwise stale outputs could be replayed against a
+      // modified workflow definition.
+      const hasResumePayload = request.priorStepOutputs !== undefined
+        || request.resumeFromStepIndex !== undefined;
+      if (hasResumePayload && request.checkpointWorkflowHash === undefined) {
+        const missingHashError = {
+          traceId,
+          workflowId: request.workflowId,
+          surface: request.surface ?? 'cli',
+          status: 'failed' as const,
+          startedAt,
+          completedAt: new Date().toISOString(),
+          input: request.input,
+          stepResults: [],
+          error: {
+            code: 'CHECKPOINT_HASH_REQUIRED',
+            message: 'Resume requests that provide priorStepOutputs or resumeFromStepIndex must also provide checkpointWorkflowHash so workflow drift can be verified.',
+          },
+        };
+        await traceStore.upsertTrace(missingHashError);
+        return {
+          traceId,
+          workflowId: request.workflowId,
+          success: false,
+          stepResults: [],
+          error: missingHashError.error,
+          totalDurationMs: 0,
+          workflowDir,
+        } satisfies RuntimeWorkflowResponse;
+      }
+
+      // Drift detection: verify the workflow definition has not changed since
+      // the checkpoint was taken.
       if (request.checkpointWorkflowHash !== undefined && request.checkpointWorkflowHash !== workflowHash) {
         const driftError = {
           traceId,
@@ -159,6 +193,40 @@ export function createRuntimeWorkflowRunnerService(
           success: false,
           stepResults: [],
           error: driftError.error,
+          totalDurationMs: 0,
+          workflowDir,
+        } satisfies RuntimeWorkflowResponse;
+      }
+
+      // Bounds check: resumeFromStepIndex must reference a real step in the
+      // loaded workflow. Out-of-bounds values would silently cause the runner
+      // to treat every step as cached (if matching ids) or execute from the
+      // start, both of which hide real drift from the caller.
+      if (
+        request.resumeFromStepIndex !== undefined
+        && (request.resumeFromStepIndex < 0 || request.resumeFromStepIndex >= workflow.steps.length)
+      ) {
+        const oobError = {
+          traceId,
+          workflowId: request.workflowId,
+          surface: request.surface ?? 'cli',
+          status: 'failed' as const,
+          startedAt,
+          completedAt: new Date().toISOString(),
+          input: request.input,
+          stepResults: [],
+          error: {
+            code: 'CHECKPOINT_RESUME_INDEX_OUT_OF_RANGE',
+            message: `resumeFromStepIndex ${String(request.resumeFromStepIndex)} is out of range for workflow "${request.workflowId}" (steps.length = ${String(workflow.steps.length)}).`,
+          },
+        };
+        await traceStore.upsertTrace(oobError);
+        return {
+          traceId,
+          workflowId: request.workflowId,
+          success: false,
+          stepResults: [],
+          error: oobError.error,
           totalDurationMs: 0,
           workflowDir,
         } satisfies RuntimeWorkflowResponse;

@@ -2,6 +2,24 @@
 
 All notable changes to AutomatosX are documented here.
 
+## [14.0.3] - 2026-04-05
+
+### Bug Fixes
+
+- **cli/monitor:** Activity tab sort comparator no longer returns `NaN` when a trace has a missing or unparseable `startedAt`. Invalid timestamps are coerced to `0` so the sort order stays stable and traces with bad data do not scramble the list. (`monitor-dashboard-script-tabs.ts:16`)
+- **cli/monitor:** Activity tab empty state now distinguishes "no runs recorded yet" from "runs exist but were filtered out". Previously the empty body always showed the first-run onboarding hint (`No workflow runs yet. Try ax ship ...`) even when the user had narrowed the view down with workflow/search/time filters — now filtered-empty states show `No runs match the current filters. Try widening the time window, clearing the search, or switching the workflow.` instead. (`monitor-dashboard-script-tabs.ts:78`)
+- **cli/monitor:** Activity tab workflow dropdown is now built from traces inside the current time window (and sorted), so users can no longer select workflows whose only runs fall outside the selected window and end up staring at an empty list. (`monitor-dashboard-script-tabs.ts:29`)
+- **shared-runtime (workflow resume):** `runWorkflow` now rejects resume requests that provide `priorStepOutputs` or `resumeFromStepIndex` without a `checkpointWorkflowHash` (`CHECKPOINT_HASH_REQUIRED`). Previously the drift check was silently skipped in that shape, which allowed stale cached outputs to be replayed against a modified workflow definition. The CLI `ax resume` path already supplies the hash, so this closes an API misuse hole for MCP / library consumers.
+- **shared-runtime (workflow resume):** `runWorkflow` now rejects resume requests whose `resumeFromStepIndex` is negative or past the end of the loaded workflow (`CHECKPOINT_RESUME_INDEX_OUT_OF_RANGE`). Previously an out-of-range index could silently cause every step to be treated as cached or to execute from the start without flagging the inconsistency to the caller.
+
+### Tests
+
+- Added two new `runtime-workflow-runner-service` tests covering the missing-hash and out-of-range resume rejections. Suite: 50 files, 424 tests (up from 422), all green. Typecheck + build clean.
+
+### Build System
+
+- Bumped root + all 8 workspace packages (`contracts`, `workflow-engine`, `state-store`, `trace-store`, `shared-runtime`, `monitoring`, `mcp-server`, `cli`) from `14.0.2` to `14.0.3`, and updated internal `@defai.digital/*` dependency ranges to `^14.0.3`.
+
 ## [14.0.2] - 2026-04-05
 
 ### Bug Fixes

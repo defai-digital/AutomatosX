@@ -10,22 +10,37 @@ export const MONITOR_DASHBOARD_SCRIPT_TABS = `
 
     function renderActivity(state) {
       const traces = (state.traces || []).slice();
-      const workflows = Array.from(new Set(traces.map(function(t) { return t.workflowId; }).filter(Boolean)));
 
-      // Sort: running first, then by startedAt desc
+      // Sort: running first, then by startedAt desc. Coerce invalid/missing
+      // timestamps to 0 so the comparator never returns NaN (NaN would make
+      // sort order undefined and could scramble traces with bad timestamps).
       traces.sort(function(a, b) {
         if (a.status === 'running' && b.status !== 'running') return -1;
         if (b.status === 'running' && a.status !== 'running') return 1;
-        return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
+        const aTime = a && a.startedAt ? new Date(a.startedAt).getTime() : 0;
+        const bTime = b && b.startedAt ? new Date(b.startedAt).getTime() : 0;
+        const aValid = Number.isFinite(aTime) ? aTime : 0;
+        const bValid = Number.isFinite(bTime) ? bTime : 0;
+        return bValid - aValid;
       });
+
+      // Time-windowed set feeds the workflow dropdown so users only see
+      // workflows that actually have runs inside the current window (bug fix:
+      // previously the dropdown was built from all traces and could list
+      // workflows that then produced an empty result when selected).
+      const withinWindow = traces.filter(function(t) {
+        return withinTimeWindow(t.startedAt, activityTimeWindow);
+      });
+      const workflows = Array.from(
+        new Set(withinWindow.map(function(t) { return t.workflowId; }).filter(Boolean)),
+      ).sort();
 
       // Pre-filter by everything except status so filter-pill counts reflect
       // the runs each pill would actually show (bug fix: counts previously
       // ignored workflow/search/time filters and could display "All (30)"
       // while the list below rendered an empty state).
-      const preStatusFiltered = traces.filter(function(t) {
+      const preStatusFiltered = withinWindow.filter(function(t) {
         const wfOk = activityWorkflow === 'all' || t.workflowId === activityWorkflow;
-        const timeOk = withinTimeWindow(t.startedAt, activityTimeWindow);
         const searchOk = matchesQuery(activitySearch, [
           t.workflowId,
           traceDisplayName(t),
@@ -36,7 +51,7 @@ export const MONITOR_DASHBOARD_SCRIPT_TABS = `
           metadataString(t.metadata, 'command'),
           ...(extractTraceProviders(t)),
         ]);
-        return wfOk && timeOk && searchOk;
+        return wfOk && searchOk;
       });
       const filtered = preStatusFiltered.filter(function(t) {
         return activityFilter === 'all' || t.status === activityFilter;
@@ -72,9 +87,22 @@ export const MONITOR_DASHBOARD_SCRIPT_TABS = `
 
       let body;
       if (filtered.length === 0) {
-        const hint = activityFilter !== 'all'
-          ? 'No ' + esc(activityFilter) + ' traces' + (activityWorkflow !== 'all' ? ' for ' + esc(activityWorkflow) : '') + '.'
-          : workflowEmptyStateHint('single');
+        // Distinguish "no runs ever" from "runs exist but are filtered out"
+        // so we do not show the "Try ax ship ..." first-run hint to users who
+        // actually have data but have narrowed it out with the filter bar.
+        const hasAnyRuns = traces.length > 0;
+        const isFiltered = activityFilter !== 'all'
+          || activityWorkflow !== 'all'
+          || activityTimeWindow !== 'all'
+          || activitySearch.length > 0;
+        let hint;
+        if (!hasAnyRuns) {
+          hint = workflowEmptyStateHint('single');
+        } else if (isFiltered) {
+          hint = 'No runs match the current filters. Try widening the time window, clearing the search, or switching the workflow.';
+        } else {
+          hint = workflowEmptyStateHint('single');
+        }
         body = renderEmptyStateHtml(hint);
       } else {
         body = renderStackItems(paged, activityRow) + renderActivityPagination(filtered.length, pageStartIndex, paged.length, totalPages);

@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/trace-store",
-  "version": "14.0.2",
+  "version": "14.0.3",
   "description": "Shared trace persistence for CLI and MCP workflow execution",
   "type": "module",
   "publishConfig": {

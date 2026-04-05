@@ -421,4 +421,146 @@ describe('runtime workflow runner service', () => {
       },
     });
   });
+
+  it('rejects resume requests that provide cached outputs without a checkpoint workflow hash', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+    const traces: Array<Record<string, unknown>> = [];
+
+    await writeFile(
+      join(tempDir, 'hashless-resume.json'),
+      `${JSON.stringify({
+        workflowId: 'hashless-resume',
+        name: 'Hashless Resume',
+        version: '1.0.0',
+        steps: [
+          { stepId: 'step-one', type: 'prompt', config: { prompt: 'One.' } },
+          { stepId: 'step-two', type: 'prompt', config: { prompt: 'Two.' } },
+        ],
+      }, null, 2)}\n`,
+      'utf8',
+    );
+
+    const service = createRuntimeWorkflowRunnerService({
+      basePath: tempDir,
+      traceStore: {
+        upsertTrace: async (trace: unknown) => {
+          traces.push(trace as Record<string, unknown>);
+          return trace;
+        },
+      } as never,
+      stateStore: {
+        getSession: async () => undefined,
+        createSession: async (session: unknown) => session,
+      } as never,
+      resolveProviderBridge: () => ({
+        executePrompt: async () => {
+          throw new Error('executePrompt should not be called');
+        },
+      }),
+      resolveDiscussionCoordinator: () => ({
+        run: async () => {
+          throw new Error('discussion coordinator should not be called');
+        },
+      }),
+      resolveWorkflowDir: (workflowDir, requestBasePath, defaultBasePath) => workflowDir ?? requestBasePath ?? defaultBasePath,
+      resolveGuardPolicies: async () => [],
+      tokenize: (value) => value.split(/\s+/).filter((entry) => entry.length > 0).length,
+      createTraceId: () => 'hashless-resume-001',
+      runAgent: async () => {
+        throw new Error('runAgent should not be called');
+      },
+    });
+
+    const result = await service.runWorkflow({
+      workflowId: 'hashless-resume',
+      workflowDir: tempDir,
+      surface: 'cli',
+      resumeFromStepIndex: 0,
+      priorStepOutputs: { 'step-one': 'cached' },
+    });
+
+    expect(result).toMatchObject({
+      traceId: 'hashless-resume-001',
+      success: false,
+      error: { code: 'CHECKPOINT_HASH_REQUIRED' },
+    });
+    expect(traces).toHaveLength(1);
+    expect(traces[0]).toMatchObject({
+      status: 'failed',
+      error: { code: 'CHECKPOINT_HASH_REQUIRED' },
+    });
+  });
+
+  it('rejects resume requests with an out-of-range resumeFromStepIndex', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+    const traces: Array<Record<string, unknown>> = [];
+
+    const workflowDef = {
+      workflowId: 'oob-resume',
+      name: 'OOB Resume',
+      version: '1.0.0',
+      steps: [
+        { stepId: 'only-step', type: 'prompt' as const, config: { prompt: 'Only.' } },
+      ],
+    };
+    await writeFile(
+      join(tempDir, 'oob-resume.json'),
+      `${JSON.stringify(workflowDef, null, 2)}\n`,
+      'utf8',
+    );
+    const workflowHash = computeWorkflowHash(workflowDef);
+
+    const service = createRuntimeWorkflowRunnerService({
+      basePath: tempDir,
+      traceStore: {
+        upsertTrace: async (trace: unknown) => {
+          traces.push(trace as Record<string, unknown>);
+          return trace;
+        },
+      } as never,
+      stateStore: {
+        getSession: async () => undefined,
+        createSession: async (session: unknown) => session,
+      } as never,
+      resolveProviderBridge: () => ({
+        executePrompt: async () => {
+          throw new Error('executePrompt should not be called');
+        },
+      }),
+      resolveDiscussionCoordinator: () => ({
+        run: async () => {
+          throw new Error('discussion coordinator should not be called');
+        },
+      }),
+      resolveWorkflowDir: (workflowDir, requestBasePath, defaultBasePath) => workflowDir ?? requestBasePath ?? defaultBasePath,
+      resolveGuardPolicies: async () => [],
+      tokenize: (value) => value.split(/\s+/).filter((entry) => entry.length > 0).length,
+      createTraceId: () => 'oob-resume-001',
+      runAgent: async () => {
+        throw new Error('runAgent should not be called');
+      },
+    });
+
+    const result = await service.runWorkflow({
+      workflowId: 'oob-resume',
+      workflowDir: tempDir,
+      surface: 'cli',
+      resumeFromStepIndex: 7,
+      priorStepOutputs: { 'only-step': 'cached' },
+      checkpointWorkflowHash: workflowHash,
+    });
+
+    expect(result).toMatchObject({
+      traceId: 'oob-resume-001',
+      success: false,
+      error: { code: 'CHECKPOINT_RESUME_INDEX_OUT_OF_RANGE' },
+    });
+    expect(traces).toHaveLength(1);
+    expect(traces[0]).toMatchObject({
+      status: 'failed',
+      error: { code: 'CHECKPOINT_RESUME_INDEX_OUT_OF_RANGE' },
+    });
+  });
 });
